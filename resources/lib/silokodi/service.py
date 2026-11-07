@@ -17,7 +17,7 @@ import xbmc
 import xbmcgui
 
 from . import catchup, jump, kodi, kodidb, mapping, migrate, quick, tracks, upnext, keymap
-from . import channels, commands, playeraudio, playersubs, theme, tvrows
+from . import channels, commands, playeraudio, playersubs, theme, tvrows, ytrows
 from .theme import ThemePlayer
 from .api import ApiError, SignedOut, SiloClient
 from .events import Debouncer, EventListener
@@ -251,6 +251,12 @@ def requested_available(card):
 
 
 class Service(object):
+    # Skyline's YouTube page's rows (publish_youtube_cards): whether they're
+    # being fetched, when last, and whether the cards wait to be saved.
+    youtube_publishing, youtube_at, cards_to_save = False, 0, False
+    youtube_stream_at = None  # a stream's start: its rows fetched again just after
+    youtube_fetched_at = 0  # the last fetch, whole or not
+
     def __init__(self):
         self.monitor = Monitor(self)
         self.version = kodi.version()
@@ -393,6 +399,20 @@ class Service(object):
             self.tv_follower.tick(time.time())
         except Exception as error:  # never let it stop the service
             kodi.log_warning('TV preview follow: %s' % error)
+        if self.cards_to_save:
+            self.cards_to_save = False
+            with self.cards_lock:
+                self.db.set_meta('home_cards', dict(self.home_cards))
+        if kodi.get_property('youtube.subscribed'):  # a channel subscribed to: its rows are due
+            kodi.set_property('youtube.subscribed', '')
+            self.youtube_at = 0
+        # Skyline's YouTube page's rows: when due, while the remote is left
+        # alone (watching something too: a programme leaves it alone longest).
+        stream = ytrows.stream_due(self.youtube_stream_at, self.youtube_fetched_at, time.time())
+        due = time.time() - self.youtube_at >= ytrows.REFRESH or stream
+        if ticks % 10 == 0 and due and xbmc.getCondVisibility(
+                'System.IdleTime(%d)' % (ytrows.IDLE if self.youtube_at else ytrows.FIRST_IDLE)):
+            self.publish_youtube_cards_soon(refresh=stream)
         if ticks % TV_REFRESH == 5 or kodi.get_property('tv.refresh'):
             kodi.set_property('tv.refresh', '')
             self.publish_tv_cards_soon()
@@ -1243,6 +1263,57 @@ class Service(object):
         finally:
             self.tv_publishing = False
 
+    def publish_youtube_cards_soon(self, refresh=False):
+        """Skyline's YouTube page's rows (ytrows.py), off the main loop: each
+        list is a run of the YouTube add-on, seconds each."""
+        if self.youtube_publishing or not xbmc.getCondVisibility('System.HasAddon(%s) + System.AddonIsEnabled(%s)'
+                                                                 % (ytrows.ADDON, ytrows.ADDON)):
+            return
+        self.youtube_publishing = True
+        thread = threading.Thread(target=self.publish_youtube_cards, args=(refresh,), name='silokodi-youtube-rows')
+        thread.daemon = True
+        thread.start()
+
+    def publish_youtube_cards(self, refresh=False):
+        try:
+            started = time.time()
+            kodi.set_property('youtube.fetching', '1')  # Skyline hides Kodi's "Loading directory"
+            try:
+                extras = ytrows.extra_channels(kodi.setting('youtube_extra_channels'),
+                                               os.path.join(kodi.profile_dir(), 'youtube_extra.json'), time.time())
+                cards = ytrows.gather(idle=lambda: xbmc.getCondVisibility('System.IdleTime(5)'), extras=extras,
+                                      refresh=refresh)
+            finally:
+                # After Kodi's dialog has closed (its animation), or it shows as it goes.
+                xbmc.Monitor().waitForAbort(1.5)
+                kodi.set_property('youtube.fetching', '')
+            props = {}
+            for row, (key, _, _) in enumerate(ytrows.ROWS, 1):
+                if key in cards:  # a row not fetched (a key was pressed) keeps its cards
+                    props.update(home_cards.row_properties(row, cards[key], 'youtube', ytrows.CARDS))
+            props.update(ytrows.screen_properties(cards))
+            home = xbmcgui.Window(10000)
+            with self.cards_lock:
+                changed = 0
+                for key, value in props.items():
+                    if self.home_cards.get(key) != value:
+                        home.setProperty(key, value)
+                        changed += 1
+                self.home_cards.update(props)
+            # A stream yet to start: fetched again once it's live (its LIVE).
+            self.youtube_stream_at = ytrows.next_start(cards, time.time())
+            self.youtube_fetched_at = time.time()
+            if all(key in cards for key, _, _ in ytrows.ROWS) and 'channels' in cards:
+                self.youtube_at = time.time()  # else the rest when idle again
+            self.cards_to_save = changed > 0  # drawn at once after a restart too
+            kodi.log('YouTube page: %s (%d values changed) in %.1f s' % (
+                ', '.join('%s %d' % (key, len(cards.get(key) or [])) for key, _, _ in ytrows.ROWS), changed,
+                time.time() - started))
+        except Exception as error:  # never let it stop the service
+            kodi.log_warning('YouTube page rows: %s' % error)
+        finally:
+            self.youtube_publishing = False
+
     def publish_tv_title(self):
         """What Live TV is playing, without the guide's live mark, for
         Skyline's TV page hero (tv.playing_title): its cards' titles are so."""
@@ -1333,8 +1404,10 @@ class Service(object):
             if self.home_cards.get(key) != value:
                 home.setProperty(key, value)
                 changed += 1
-        # The TV page's rows are publish_tv_cards': kept as they are.
-        props.update({key: value for key, value in self.home_cards.items() if key.startswith('silo.tv.')})
+        # The TV and YouTube pages' rows are publish_tv_cards' and
+        # publish_youtube_cards': kept as they are.
+        props.update({key: value for key, value in self.home_cards.items()
+                      if key.startswith(('silo.tv.', 'silo.youtube.'))})
         for key in set(self.home_cards) - set(props):
             home.clearProperty(key)
         self.home_cards = props

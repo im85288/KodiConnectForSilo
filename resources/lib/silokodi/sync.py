@@ -186,9 +186,13 @@ def skin_layout(home_sections, libraries, library_sections, request_rows=None, r
     from .tvrows import ROWS as TV_ROWS
     # A path a skin only tests is there (published rows load nothing from it).
     pages['tv'] = [{'title': title, 'style': 'landscape', 'path': 'tv:%s' % key} for key, title in TV_ROWS]
+    # And its YouTube page (ytrows.py), while the YouTube add-on is installed.
+    from .ytrows import ROWS as YOUTUBE_ROWS
+    pages['youtube'] = [{'title': title, 'style': 'landscape', 'path': 'youtube:%s' % key}
+                        for key, title, _ in YOUTUBE_ROWS]
     for page, path in collections.items():
         properties['silo.%s.collections' % page] = path
-    for page in ('home', 'movies', 'series', 'requests', 'tv'):
+    for page in ('home', 'movies', 'series', 'requests', 'tv', 'youtube'):
         rows = pages.get(page, [])[:MAX_ROWS]
         properties['silo.%s.count' % page] = str(len(rows))
         for index in range(1, MAX_ROWS + 1):

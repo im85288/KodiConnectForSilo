@@ -73,12 +73,10 @@ def test_back_from_results_goes_to_the_history(monkeypatch):
     assert page.props['silo.youtube.query'] == 'top gear'
 
 
-def test_back_from_the_history_goes_home(monkeypatch):
+def test_back_from_the_history_goes_to_the_youtube_page(monkeypatch):
     page = Page(focus=620, section='search').install(monkeypatch)
-    page.props['silo.youtube.query'] = 'top gear'
     context.youtube_back()
-    assert page.builtins == ['SetFocus(301)']
-    assert 'silo.youtube.section' not in page.props and 'silo.youtube.query' not in page.props
+    assert page.builtins == ['Action(Back)']
 
 
 def test_back_elsewhere_is_kodis(monkeypatch):

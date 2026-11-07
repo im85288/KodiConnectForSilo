@@ -536,3 +536,19 @@ msgstr ""
 msgctxt "#30233"
 msgid "No Live TV playlist to read groups from"
 msgstr ""
+
+msgctxt "#30234"
+msgid "Subscribe to %s"
+msgstr ""
+
+msgctxt "#30235"
+msgid "Subscribe to this channel"
+msgstr ""
+
+msgctxt "#30236"
+msgid "Extra YouTube channels"
+msgstr ""
+
+msgctxt "#30237"
+msgid "Handles (such as @BrianMenard) of channels you subscribe to that YouTube leaves out of the YouTube add-on's subscriptions, comma separated. Skyline's YouTube Subscriptions shows them with their newest videos."
+msgstr ""

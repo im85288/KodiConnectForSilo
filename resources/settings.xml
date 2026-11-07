@@ -125,6 +125,12 @@
              choice is kept in the profile (tvrows.SPORT_GROUPS), not a setting: Kodi's
              open settings dialog doesn't see an add-on's setSetting, and its OK
              would write the old value back. -->
+        <setting id="youtube_extra_channels" type="string" label="30236" help="30237">
+          <level>0</level>
+          <default/>
+          <constraints><allowempty>true</allowempty></constraints>
+          <control type="edit" format="string"/>
+        </setting>
         <setting id="tv_sport_groups" type="action" label="30229" help="30230">
           <level>0</level>
           <data>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=tv_sport_groups)</data>

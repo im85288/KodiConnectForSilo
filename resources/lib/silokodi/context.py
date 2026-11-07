@@ -78,11 +78,21 @@ def youtube_menu():
     if not path.startswith(YOUTUBE_PLAY):
         xbmc.executebuiltin('Action(ContextMenu)')
         return
-    choice = xbmcgui.Dialog().contextmenu([kodi.string(30214), kodi.string(30215)])
+    # And Subscribe to its channel, as the add-on's own menu offers (its
+    # channel_id; YouTube left some subscriptions out of the add-on's list).
+    channel_id = xbmc.getInfoLabel('ListItem.Property(channel_id)')
+    channel = xbmc.getInfoLabel('ListItem.Artist') or xbmc.getInfoLabel('ListItem.Studio')
+    options = [kodi.string(30214), kodi.string(30215)]
+    if channel_id.startswith('UC'):
+        options.append(kodi.string(30234) % channel if channel and channel != 'Untitled' else kodi.string(30235))
+    choice = xbmcgui.Dialog().contextmenu(options)
     if choice == 0:
         xbmc.executebuiltin('PlayMedia(%s)' % path)
     elif choice == 1:
         xbmc.executebuiltin('PlayMedia(%s%sask_for_quality=true)' % (path, '&' if '?' in path else '?'))
+    elif choice == 2:
+        xbmc.executebuiltin('RunPlugin(plugin://plugin.video.youtube/subscriptions/add/?subscription_id=%s)' % channel_id)
+        kodi.set_property('youtube.subscribed', channel_id)  # the next fetch has it
 
 
 PERSON_GRID = 5301  # Skyline's person page's titles
@@ -189,25 +199,15 @@ def youtube_focus(section, ids, controls=()):
 
 
 def youtube_back():
-    """Back on Skyline's YouTube page (zz_skyline_home.xml): from Search's
-    results to its history, and from the history to the page's Home (its
-    first row focused, as the app's); otherwise Back as usual. A keymap has
-    no conditions, and the page's own controls never see this Back, so it's
-    done here."""
-    home = xbmcgui.Window(10000)
-    if xbmc.getCondVisibility('Control.HasFocus(100)'):
-        # The page's side menu: closed, back to its section (the menu's Right).
-        xbmc.executebuiltin('Action(Right)')
-        return
-    if home.getProperty('silo.youtube.section') != 'search':
-        xbmc.executebuiltin('Action(Back)')
-        return
-    if xbmc.getCondVisibility('Control.HasFocus(%d)' % YOUTUBE_RESULTS):
+    """Back on Skyline's YouTube window (zz_skyline_home.xml): from Search's
+    results to its history; otherwise Back as usual, to the YouTube page. A
+    keymap has no conditions, and the window's own controls never see this
+    Back, so it's done here."""
+    if xbmcgui.Window(10000).getProperty('silo.youtube.section') == 'search' \
+            and xbmc.getCondVisibility('Control.HasFocus(%d)' % YOUTUBE_RESULTS):
         xbmc.executebuiltin('SetFocus(%d)' % YOUTUBE_HISTORY)
         return
-    for key in ('search', 'section', 'query'):
-        home.clearProperty('silo.youtube.' + key)
-    xbmc.executebuiltin('SetFocus(301)')
+    xbmc.executebuiltin('Action(Back)')
 
 
 def library_menu(listitem):
