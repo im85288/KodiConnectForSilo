@@ -186,6 +186,17 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.15.0 (2026-11-07)
+- **Skyline's TV page:** rows of My teams (the teams in Settings › Live TV), On now (the channels you watched
+  last, with what's on) and Live sport now (live matches in the guide, one card across a match's channels, UHD
+  and English feeds first). OK plays a channel, offers a match's channels, or sets a reminder for one yet to
+  start. The last channel watched plays behind the page, and switches to the card you rest on for 3 seconds;
+  channels only previewed keep their place in On now and the recent channels.
+- **TheSportsDB:** your teams' fanart and next fixture (a card before the guide lists it), and leagues' fanart,
+  as backdrops after the programme's own picture. Its free key allows few calls, so answers are kept for days.
+- **Live sport groups:** a tick list in Settings › Live TV keeps Live sport now to chosen playlist groups; My
+  teams still looks in every group.
+
 ### v0.14.2 (2026-11-07)
 - **Back in Skyline's TV guide:** returns to what's playing, and twice in a row leaves Live TV (needs Skyline's
   window 1189); with nothing playing, it goes from the timeline up to the channel groups.

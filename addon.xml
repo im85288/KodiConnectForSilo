@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.14.2" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.15.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -33,7 +33,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.14.2: for Skyline's TV guide: Back returns to what's playing, and Back twice leaves Live TV.
+    <news>0.15.0: for Skyline's TV page: My teams, On now and Live sport now, with the channel playing behind the page and following the card you rest on. Your teams' fanart and next fixture come from TheSportsDB; Live sport now can keep to chosen playlist groups.
+
+0.14.2: for Skyline's TV guide: Back returns to what's playing, and Back twice leaves Live TV.
 
 0.14.1: plays the audio track Silo picks for your profile, so a file with another language first (a MULTi release) plays in your language.
 
@@ -45,8 +47,6 @@
 
 0.12.3: for Skyline's YouTube page: search from its box, Back closes the results, and the menu key offers Play or Play choosing the video's quality.
 
-0.12.2: steadier: the service keeps running through an unexpected error, and repeated jobs no longer queue up behind a long sync.
-
-0.12.1: new titles' artwork no longer stays blank after Kodi starts, Continue Watching follows a finished episode in about 2 s, a full resync shows its progress and fetches artwork again, and "Remove and re-add every Silo item" rebuilds at once.</news>
+0.12.2: steadier: the service keeps running through an unexpected error, and repeated jobs no longer queue up behind a long sync.</news>
   </extension>
 </addon>
