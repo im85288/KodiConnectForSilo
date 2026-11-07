@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.15.0" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.16.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -33,7 +33,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.15.0: for Skyline's TV page: My teams, On now and Live sport now, with the channel playing behind the page and following the card you rest on. Your teams' fanart and next fixture come from TheSportsDB; Live sport now can keep to chosen playlist groups.
+    <news>0.16.0: for Skyline's YouTube page: its rows fetched in the background while the remote is left alone, so the page and its Subscriptions open at once; a channel's videos include its live recordings; streams say when they start or that they're live. A setting adds channels YouTube leaves out of the add-on's subscriptions.
+
+0.15.0: for Skyline's TV page: My teams, On now and Live sport now, with the channel playing behind the page and following the card you rest on. Your teams' fanart and next fixture come from TheSportsDB; Live sport now can keep to chosen playlist groups.
 
 0.14.2: for Skyline's TV guide: Back returns to what's playing, and Back twice leaves Live TV.
 
@@ -43,10 +45,6 @@
 
 0.13.1: restores films that had lost their library row to another film, and stops that happening. Kodi now says when syncs keep failing.
 
-0.13.0: SiloKodiConnect is now KodiConnectForSilo, to follow Silo's naming policy. Your sign-in, settings and library move across by themselves; you can then uninstall the old add-on. Syncing works again with Silo's latest version, which had stopped each sync after Movies.
-
-0.12.3: for Skyline's YouTube page: search from its box, Back closes the results, and the menu key offers Play or Play choosing the video's quality.
-
-0.12.2: steadier: the service keeps running through an unexpected error, and repeated jobs no longer queue up behind a long sync.</news>
+0.13.0: SiloKodiConnect is now KodiConnectForSilo, to follow Silo's naming policy. Your sign-in, settings and library move across by themselves; you can then uninstall the old add-on. Syncing works again with Silo's latest version, which had stopped each sync after Movies.</news>
   </extension>
 </addon>

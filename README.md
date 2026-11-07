@@ -186,6 +186,18 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.16.0 (2026-11-07)
+- **Skyline's YouTube page:** Recommended, Subscriptions, Trending, Watch later, History and Liked as cards, with
+  the subscribed channels and their newest videos for its Subscriptions screen, fetched one list at a time in the
+  background and published, so the page opens at once. The fetch runs only while the remote is left alone
+  (watching included): Kodi's "Loading directory" dialog takes the remote's keys while a list loads, and a key
+  stops the fetch after the list it's on. Titles lose emoji Kodi can't draw; views, age and length are on the
+  info line; streams say Starts, Premieres or LIVE (their rows fetched again, fresh, once they're due).
+- **Channels' videos:** a channel's uploads playlist, so its live recordings are there too.
+- **Extra YouTube channels:** a setting for channels YouTube leaves out of the add-on's subscriptions (the
+  YouTube app lists them); their handles, such as @BrianMenard, add them and their newest videos.
+- **Subscribe:** the YouTube menu key on a video offers Subscribe to its channel.
+
 ### v0.15.0 (2026-11-07)
 - **Skyline's TV page:** rows of My teams (the teams in Settings › Live TV), On now (the channels you watched
   last, with what's on) and Live sport now (live matches in the guide, one card across a match's channels, UHD
