@@ -35,6 +35,12 @@ def previous(channels, watched, playing=None):
 
 
 def last_watched():
+    """{channel id: when last watched}: Kodi's, but a channel that only
+    played as Skyline's TV page preview keeps its time from before."""
+    return without_previews(kodi_last_watched(), load_previews())
+
+
+def kodi_last_watched():
     """{channel id: when last watched} from Kodi's TV database (read only)."""
     paths = sorted(glob.glob(os.path.join(kodi.database_dir(), 'TV*.db')),
                    key=lambda path: int(re.sub(r'\D', '', os.path.basename(path)) or 0))
@@ -45,6 +51,60 @@ def last_watched():
         return dict(connection.execute('SELECT idChannel, iLastWatched FROM channels WHERE iLastWatched > 0'))
     finally:
         connection.close()
+
+
+PREVIEWS_FILE = 'tv_previews.json'
+PREVIEW_SLACK = 60  # seconds: Kodi's time for a channel starting may be a little before ours
+
+
+def previews_path():
+    return os.path.join(kodi.profile_dir(), PREVIEWS_FILE)
+
+
+def load_previews():
+    try:
+        with open(previews_path()) as handle:
+            return json.load(handle)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_previews(previews):
+    with open(previews_path() + '.tmp', 'w') as handle:
+        json.dump(previews, handle)
+    os.replace(previews_path() + '.tmp', previews_path())
+
+
+def note_preview(channel_id, now=None, kodi_watched=None):
+    """A channel about to play as the TV page's preview (Kodi then counts it
+    watched): kept with when, and when it was last watched before (the
+    first preview's, if it's previewed again)."""
+    previews = load_previews()
+    before = (kodi_watched if kodi_watched is not None else kodi_last_watched()).get(int(channel_id), 0)
+    entry = previews.get(str(channel_id))
+    previews[str(channel_id)] = {'at': int(now or time.time()), 'before': entry['before'] if entry else before}
+    save_previews(previews)
+
+
+def note_watched(channel_id):
+    """The channel is watched now (full screen): no longer only previewed."""
+    previews = load_previews()
+    if previews.pop(str(channel_id), None) is not None:
+        save_previews(previews)
+
+
+def without_previews(watched, previews):
+    """watched, a previewed channel's time from before its preview, for as
+    long as Kodi's time is the preview's (none if it hadn't been watched)."""
+    adjusted = dict(watched)
+    for key, entry in (previews or {}).items():
+        channel_id = int(key) if str(key).isdigit() else None
+        if channel_id in adjusted and adjusted[channel_id] >= entry.get('at', 0) - PREVIEW_SLACK:
+            if entry.get('before'):
+                adjusted[channel_id] = entry['before']
+            else:
+                del adjusted[channel_id]
+    return adjusted
 
 
 def removed_path():

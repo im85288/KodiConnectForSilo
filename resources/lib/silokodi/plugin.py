@@ -131,6 +131,20 @@ def run(argv):
         return recent_channels(base, handle)
     if mode == 'play_channel':
         return play_channel(params.get('id'))
+    if mode == 'tv_preview':
+        # Skyline's TV page opened: the last channel watched, in its preview box.
+        from .tvrows import preview
+        return preview()
+    if mode == 'tv_watch':
+        # Skyline's TV page: a match on several channels.
+        from .tvrows import watch
+        return watch((params.get('ids') or '').split(','))
+    if mode == 'tv_sport_groups':
+        # A settings button: Live sport now's playlist groups, ticked.
+        from .tvrows import choose_sport_groups
+        return choose_sport_groups()
+    if mode == 'tv_remind':
+        return tv_remind(params.get('start') or '', (params.get('ids') or '').split(','), params.get('title') or '')
     if mode == 'previous_channel':
         return previous_channel()
     if mode == 'forget_channel':
@@ -306,8 +320,26 @@ def recent_channels(base, handle):
 
 
 def play_channel(channel_id):
-    if str(channel_id or '').isdigit():
-        kodi.jsonrpc('Player.Open', item={'channelid': int(channel_id)})
+    if not str(channel_id or '').isdigit():
+        return
+    if playing_channel() == int(channel_id):
+        # Already playing (Skyline's TV page shows it in its preview): full screen.
+        xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
+        return
+    kodi.jsonrpc('Player.Open', item={'channelid': int(channel_id)})
+
+
+def tv_remind(start, ids, title):
+    """Skyline's TV page: an upcoming match's reminder, set or removed; the
+    service says when it starts and offers to play it. A fixture the guide
+    doesn't list yet has no channels (ids): they're filled in once it does."""
+    from .tvrows import toggle_reminder
+    ids = [i for i in ids if i]
+    if not start.isdigit():
+        return
+    on = toggle_reminder(start, ids, title)
+    kodi.notify(kodi.string(30223) % title if on else kodi.string(30224) % title)
+    kodi.set_property('tv.refresh', '1')  # the card says so
 
 
 def previous_channel():

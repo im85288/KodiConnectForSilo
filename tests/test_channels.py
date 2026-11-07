@@ -95,3 +95,17 @@ def test_group_steps_go_the_shorter_way_round():
     assert steps_to(names, 'UK | Sky Sports', 'UK | News') == -2
     assert steps_to(names, 'All', 'US | News') == -1
     assert steps_to(names, 'UK | Sports', 'UK | Sports') == 0
+
+
+def test_a_preview_isnt_watching(tmp_path, monkeypatch):
+    from resources.lib.silokodi import channels
+    monkeypatch.setattr(channels.kodi, 'profile_dir', lambda: str(tmp_path))
+    channels.note_preview(7, now=1000, kodi_watched={7: 500})
+    channels.note_preview(8, now=1000, kodi_watched={})
+    channels.note_preview(7, now=1100, kodi_watched={7: 1000})  # again: its time from before stays
+    previews = channels.load_previews()
+    assert channels.without_previews({7: 1100, 8: 1001, 9: 900}, previews) == {7: 500, 9: 900}
+    # Kodi's time from before the preview (the file outlived a reset): Kodi's
+    assert channels.without_previews({7: 900}, {'7': {'at': 1100, 'before': 500}}) == {7: 900}
+    channels.note_watched(7)  # full screen
+    assert channels.without_previews({7: 1100, 8: 1001}, channels.load_previews()) == {7: 1100}

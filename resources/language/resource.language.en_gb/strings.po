@@ -491,3 +491,48 @@ msgstr ""
 msgctxt "#30220"
 msgid "Details"
 msgstr ""
+
+msgctxt "#30221"
+msgid "My teams"
+msgstr ""
+
+msgctxt "#30222"
+msgid "Teams for Skyline's TV page, as the guide names them, separated by commas: Newcastle United, Newcastle Utd, Newcastle. A name followed by another word (Newcastle Jets) is a different team."
+msgstr ""
+
+msgctxt "#30223"
+msgid "Reminder set: %s"
+msgstr ""
+
+msgctxt "#30224"
+msgid "Reminder removed: %s"
+msgstr ""
+
+msgctxt "#30225"
+msgid "Starting now"
+msgstr ""
+
+msgctxt "#30226"
+msgid "Watch now"
+msgstr ""
+
+msgctxt "#30227"
+msgid "Choose a channel"
+msgstr ""
+
+msgctxt "#30228"
+msgid "channel not known yet"
+msgstr ""
+
+msgctxt "#30229"
+msgid "Live sport groups"
+msgstr ""
+
+msgctxt "#30230"
+msgid "Skyline's Live sport now row shows only matches on channels in the playlist groups ticked here. None ticked: every group. My teams always looks in every group."
+msgstr ""
+
+
+msgctxt "#30233"
+msgid "No Live TV playlist to read groups from"
+msgstr ""

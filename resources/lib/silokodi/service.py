@@ -17,7 +17,7 @@ import xbmc
 import xbmcgui
 
 from . import catchup, jump, kodi, kodidb, mapping, migrate, quick, tracks, upnext, keymap
-from . import commands, playeraudio, playersubs, theme
+from . import channels, commands, playeraudio, playersubs, theme, tvrows
 from .theme import ThemePlayer
 from .api import ApiError, SignedOut, SiloClient
 from .events import Debouncer, EventListener
@@ -79,6 +79,7 @@ PUBLISHED_PAGES = {'home': 20, 'requests': 12}
 # Home's first rows only are published (a skin has them at once); the rest
 # load from their paths as Movies' rows do. Skyline's HOME_PUBLISHED_ROWS.
 PUBLISHED_ROWS = {'home': 4, 'requests': 12}
+TV_REFRESH = 300  # seconds between the TV page's rows (Skyline): what's on, and live matches
 # The playing title's details for a skin's player (silokodi.playing.*).
 PLAYING_FIELDS = ('rating.imdb', 'rating.tmdb', 'rating.rtcritic', 'badge1', 'badge2', 'badge3', 'mpaa',
                   'air_date')
@@ -155,6 +156,9 @@ class Player(xbmc.Player):
             kodi.set_property('markers.' + kind, ranges.get(kind, ''))
 
     def _ended(self):
+        # When playback last stopped: an IPTV provider allowing one stream
+        # refuses the next for some seconds (Skyline's TV preview waits).
+        kodi.set_property('stopped_at', str(int(time.time())))
         for kind in upnext.MARKER_KINDS:
             kodi.clear_property('markers.' + kind)
         for field in PLAYING_FIELDS + EPISODE_FIELDS:
@@ -314,6 +318,8 @@ class Service(object):
         self.personal = PersonalLists(self.client, lambda: self.store.get('profile_id'), log=kodi.log)
         self.personal_events = Debouncer(quiet=PERSONAL_QUIET, limit=PERSONAL_WAIT)
         self.personal_due = True
+        self.tv_publishing = False
+        self.tv_follower = tvrows.Follower()  # the TV page's preview follows focus
 
     def close_leftover_sessions(self):
         """Silo sessions the last run left open (Kodi killed or crashed while
@@ -378,6 +384,18 @@ class Service(object):
         """The main loop's second: what's due now."""
         if ticks % 10 == 0:  # the skin may have changed
             self.sync_keymap()
+        if ticks % 60 == 0:
+            self.remind_tv()
+        if ticks % 2 == 0:
+            self.publish_tv_title()
+            self.note_tv_watched()
+        try:
+            self.tv_follower.tick(time.time())
+        except Exception as error:  # never let it stop the service
+            kodi.log_warning('TV preview follow: %s' % error)
+        if ticks % TV_REFRESH == 5 or kodi.get_property('tv.refresh'):
+            kodi.set_property('tv.refresh', '')
+            self.publish_tv_cards_soon()
         if ticks % 30 == 0:  # Live TV's playlist, rewritten by its add-on now and then
             try:
                 self.catchup.check(self.playing())
@@ -1189,6 +1207,88 @@ class Service(object):
         with self.cards_lock:  # the worker's and a stopped player's never overlap
             self._publish_home_cards()
 
+    def publish_tv_cards_soon(self):
+        """Skyline's TV page's rows (tvrows.py), off the main loop: reading the
+        guide takes a second or two."""
+        if self.tv_publishing or not xbmc.getCondVisibility('PVR.HasTVChannels'):
+            return
+        self.tv_publishing = True
+        thread = threading.Thread(target=self.publish_tv_cards, name='silokodi-tv-rows')
+        thread.daemon = True
+        thread.start()
+
+    def publish_tv_cards(self):
+        try:
+            started = time.time()
+            reminded = set(tvrows.load_reminders())
+            cards = tvrows.gather(tvrows.team_names(kodi.setting('tv_teams')), reminded,
+                                  sport_groups=tvrows.load_sport_groups())
+            tvrows.fill_reminders(cards)
+            props = {}
+            for row, (key, _) in enumerate(tvrows.ROWS, 1):
+                props.update(home_cards.row_properties(row, cards.get(key) or [], 'tv', tvrows.CARDS))
+            home = xbmcgui.Window(10000)
+            with self.cards_lock:
+                changed = 0
+                for key, value in props.items():
+                    if self.home_cards.get(key) != value:
+                        home.setProperty(key, value)
+                        changed += 1
+                self.home_cards.update(props)
+            kodi.log('TV page: %s (%d values changed) in %.1f s' % (
+                ', '.join('%s %d' % (key, len(cards.get(key) or [])) for key, _ in tvrows.ROWS), changed,
+                time.time() - started))
+        except Exception as error:  # never let it stop the service
+            kodi.log_warning('TV page rows: %s' % error)
+        finally:
+            self.tv_publishing = False
+
+    def publish_tv_title(self):
+        """What Live TV is playing, without the guide's live mark, for
+        Skyline's TV page hero (tv.playing_title): its cards' titles are so."""
+        title = ''
+        if xbmc.getCondVisibility('VideoPlayer.Content(LiveTV)'):
+            title = tvrows.without_marks(xbmc.getInfoLabel('VideoPlayer.Title'))
+        if title != getattr(self, 'tv_title', None):
+            self.tv_title = title
+            kodi.set_property('tv.playing_title', title)
+
+    def note_tv_watched(self):
+        """A channel the TV page previewed, now watched full screen: it counts
+        as watched (channels.note_watched)."""
+        if not xbmc.getCondVisibility('Window.IsActive(fullscreenvideo) + VideoPlayer.Content(LiveTV)'):
+            return
+        try:
+            if channels.load_previews():
+                playing = tvrows.playing_channel()
+                if playing:
+                    channels.note_watched(playing)
+        except Exception as error:  # never let it stop the service
+            kodi.log_warning('TV previews: %s' % error)
+
+    def remind_tv(self):
+        """A match with a reminder (Skyline's TV page) is starting: say so,
+        and offer to play it, on a thread of its own (the dialog waits)."""
+        try:
+            due = tvrows.due_reminders(time.time())
+        except Exception as error:  # never let it stop the service
+            kodi.log_warning('TV reminders: %s' % error)
+            return
+        for reminder in due:
+            def ask(reminder=reminder):
+                if xbmcgui.Dialog().yesno(kodi.string(30225), reminder.get('title') or '',
+                                          nolabel=xbmc.getLocalizedString(222), yeslabel=kodi.string(30226),
+                                          autoclose=60000):
+                    if [i for i in reminder.get('ids') or [] if i]:
+                        tvrows.watch(reminder.get('ids'))
+                    else:  # the guide never listed its channels: find it there
+                        xbmc.executebuiltin('ActivateWindow(TVGuide)')
+            thread = threading.Thread(target=ask, name='silokodi-tv-reminder')
+            thread.daemon = True
+            thread.start()
+        if due:
+            kodi.set_property('tv.refresh', '1')
+
     def _publish_home_cards(self):
         started = time.time()
         props = {}
@@ -1233,6 +1333,8 @@ class Service(object):
             if self.home_cards.get(key) != value:
                 home.setProperty(key, value)
                 changed += 1
+        # The TV page's rows are publish_tv_cards': kept as they are.
+        props.update({key: value for key, value in self.home_cards.items() if key.startswith('silo.tv.')})
         for key in set(self.home_cards) - set(props):
             home.clearProperty(key)
         self.home_cards = props
