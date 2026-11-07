@@ -406,13 +406,14 @@ class Service(object):
         if kodi.get_property('youtube.subscribed'):  # a channel subscribed to: its rows are due
             kodi.set_property('youtube.subscribed', '')
             self.youtube_at = 0
-        # Skyline's YouTube page's rows: when due, while the remote is left
-        # alone (watching something too: a programme leaves it alone longest).
-        stream = ytrows.stream_due(self.youtube_stream_at, self.youtube_fetched_at, time.time())
-        due = time.time() - self.youtube_at >= ytrows.REFRESH or stream
-        if ticks % 10 == 0 and due and xbmc.getCondVisibility(
-                'System.IdleTime(%d)' % (ytrows.IDLE if self.youtube_at else ytrows.FIRST_IDLE)):
-            self.publish_youtube_cards_soon(refresh=stream)
+        # Skyline's YouTube page's rows: as the page opens (its tab sets
+        # youtube.refresh), if they're old or a stream they show is due to
+        # have started; never in the background (ytrows.py says why).
+        if kodi.get_property('youtube.refresh'):
+            kodi.set_property('youtube.refresh', '')
+            stream = ytrows.stream_due(self.youtube_stream_at, self.youtube_fetched_at, time.time())
+            if (time.time() - self.youtube_at >= ytrows.REFRESH or stream) and xbmc.getCondVisibility(ytrows.QUIET):
+                self.publish_youtube_cards_soon(refresh=stream)
         if ticks % TV_REFRESH == 5 or kodi.get_property('tv.refresh'):
             kodi.set_property('tv.refresh', '')
             self.publish_tv_cards_soon()
@@ -1281,7 +1282,7 @@ class Service(object):
             try:
                 extras = ytrows.extra_channels(kodi.setting('youtube_extra_channels'),
                                                os.path.join(kodi.profile_dir(), 'youtube_extra.json'), time.time())
-                cards = ytrows.gather(idle=lambda: xbmc.getCondVisibility('System.IdleTime(5)'), extras=extras,
+                cards = ytrows.gather(idle=lambda: xbmc.getCondVisibility(ytrows.QUIET), extras=extras,
                                       refresh=refresh)
             finally:
                 # After Kodi's dialog has closed (its animation), or it shows as it goes.

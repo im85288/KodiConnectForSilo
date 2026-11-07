@@ -6,12 +6,14 @@ in the background and published, so the page shows at once.
 Each list is a run of the YouTube add-on (Files.GetDirectory on its plugin
 path): about 4 s to start on a SHIELD before it asks YouTube, and several at
 once lock its cache database ("database is locked", retried for up to 10 s),
-which is what kept the old page black for 11 s. So: one list at a time, every
-REFRESH, while the remote is left alone (IDLE), watching something included:
-a list Kodi waits on for 1.5 s brings up its
-modal "Loading directory" dialog, which takes the remote's keys. Skyline hides
-that dialog while youtube.fetching is set; a key pressed stops the fetch after
-the list it's on, and the rest come next time.
+which is what kept the old page black for 11 s. So: one list at a time, as
+the page opens (Skyline's YouTube tab sets youtube.refresh), if the rows are
+older than REFRESH, no video playing: the page shows the rows last published
+(kept in the database) meanwhile. Not in the background: each run of the
+add-on inside Kodi keeps memory (a whole fetch ~60 MB on a 2 GB SHIELD, which
+then had too little left to start 4K), and a fetch during 4K playback made it
+stutter. A list Kodi waits on for 1.5 s brings up its modal "Loading
+directory" dialog: Skyline hides it while youtube.fetching is set.
 """
 import datetime
 import json
@@ -47,8 +49,9 @@ RECENT = 30
 EXTRA_TTL = 7 * 86400
 EXTRA_VIDEOS = 8
 HANDLE = re.compile(r'^(@[\w.-]+|UC[\w-]{22})$')
-REFRESH = 30 * 60  # seconds between fetches
-FIRST_IDLE, IDLE = 30, 60  # seconds without a key before the first fetch, and later ones
+REFRESH = 30 * 60  # rows older than this are fetched again as the page opens
+# Fetching (and going on): no video playing (a fetch during 4K playback made it stutter).
+QUIET = '!Player.HasVideo'
 # A video's length comes as runtime (duration is a song's).
 PROPERTIES = ['title', 'plot', 'studio', 'artist', 'premiered', 'runtime', 'duration', 'art', 'thumbnail', 'file',
               'resume']
@@ -235,7 +238,10 @@ def card(item, today):
     percent = ''
     if resume.get('total') and resume.get('position'):
         percent = str(int(min(100, resume['position'] * 100 / resume['total'])))
-    return {'type': 'youtube', 'yt.date': (item.get('premiered') or '')[:10], 'yt.starts': starts_at(status, today), 'label': title, 'card.title': title, 'card.sub': channel,
+    return {'type': 'youtube', 'yt.date': (item.get('premiered') or '')[:10], 'yt.starts': starts_at(status, today),
+            # A started stream with no length yet may be on now, or over: see live_or_not.
+            'yt.check': video if status == 'LIVE' else '', 'yt.ago': ago(item.get('premiered') or '', today),
+            'label': title, 'card.title': title, 'card.sub': channel,
             'yt.when': when, 'yt.length': duration,  # the Subscriptions screen's (recent_properties)
             'card.wide_sub': '  ·  '.join(part for part in (channel, when) if part),
             'hero.title': title,
@@ -334,9 +340,53 @@ def newest_first(cards):
     return sorted(cards, key=lambda card: card.get('yt.date') or '', reverse=True)
 
 
-def gather(today=None, fetch=directory, idle=lambda: True, extras=(), refresh=False):
-    """{row: [card]}, one list after another, while idle() (the rows not
-    fetched are left out); and, with Subscriptions', 'recent' (more of its
+LIVE_CHECKS = 8  # streams asked about a fetch (live_or_not)
+
+
+def live_now(video, get=None):
+    """Whether YouTube's page says the video is live now (None: couldn't tell)."""
+    if get is None:
+        import requests
+
+        def get(url):
+            response = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'en-GB'},
+                                    cookies={'CONSENT': 'YES+1', 'SOCS': 'CAI'})
+            response.raise_for_status()
+            return response.text
+    try:
+        page = get('https://www.youtube.com/watch?v=%s' % video)
+    except Exception:  # noqa: BLE001 - a network or HTTP failure
+        return None
+    found = re.search(r'"isLiveNow":(true|false)', page)
+    return found.group(1) == 'true' if found else None
+
+
+def live_or_not(rows, check=live_now):
+    """A started stream's card says LIVE only while it's on: the YouTube
+    add-on calls a stream "Live broadcast" on air and after (a finished one
+    may come without its length), so YouTube's page is asked; one that's
+    over shows its age, as other videos."""
+    answers = {}
+    for cards in rows.values():
+        for card in cards if isinstance(cards, list) else ():
+            video = card.get('yt.check') if isinstance(card, dict) else None
+            if not video:
+                continue
+            if video not in answers:
+                answers[video] = check(video) if len(answers) < LIVE_CHECKS else None
+            if answers[video]:
+                continue
+            ago_ = card.get('yt.ago') or ''
+            card['yt.when'] = ago_
+            for field in ('card.wide_sub', 'hero.facts'):
+                card[field] = '  ·  '.join(part for part in (ago_ if part == 'LIVE' else part
+                                                             for part in card[field].split('  ·  ')) if part)
+    return rows
+
+
+def gather(today=None, fetch=directory, idle=lambda: True, extras=(), refresh=False, check=live_now):
+    """{row: [card]}, one list after another, while idle() (no video playing:
+    the rows not fetched are left out); and, with Subscriptions', 'recent' (more of its
     cards) and 'channels' (the subscribed channels, a list of its own).
     extras (extra_channels): channels to add to both, with their videos.
     refresh: the subscriptions' and extras' lists with fresh details (a
@@ -384,7 +434,7 @@ def gather(today=None, fetch=directory, idle=lambda: True, extras=(), refresh=Fa
         rows[key] = cards[:CARDS]
         if key == 'subscriptions':
             rows['recent'] = cards[:RECENT + EXTRA_VIDEOS * len(extras)]  # extras may push some out
-    return rows
+    return live_or_not(rows, check)
 
 
 RECENT_FIELDS = (('label', 'card.title'), ('thumb', 'art.landscape'), ('channel', 'card.sub'), ('when', 'yt.when'),

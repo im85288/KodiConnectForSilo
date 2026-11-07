@@ -190,3 +190,28 @@ def test_a_streams_recheck_asks_for_fresh_details():
     ytrows.gather(TODAY, lambda path: asked.append(path) or [], extras=[extra], refresh=True)
     fresh = [p for p in asked if p.endswith('&refresh=1')]
     assert len(fresh) == 2 and any('my_subscriptions' in p for p in fresh) and any('/playlist/UU3t5' in p for p in fresh)
+
+
+def test_a_finished_stream_shows_its_age_not_live():
+    live = '[B]X[/B][CR]Live broadcast @ 19:32[CR]Watch'
+    on = ytrows.card(dict(ITEM, plot=live, studio=['X'], runtime=0), TODAY)
+    over = ytrows.card(dict(ITEM, file='plugin://plugin.video.youtube/play/?video_id=zzzzzzzzzzz', plot=live,
+                            studio=['X'], runtime=0, premiered='2026-11-06'), TODAY)
+    asked = []
+
+    def check(video):
+        asked.append(video)
+        return video == 'abcdefghijk'
+    rows = ytrows.live_or_not({'recommended': [on, over], 'recent': [dict(over)]}, check)
+    assert rows['recommended'][0]['yt.when'] == 'LIVE'
+    assert rows['recommended'][1]['yt.when'] == 'Yesterday'
+    assert rows['recommended'][1]['card.wide_sub'] == 'X  ·  Yesterday'
+    assert rows['recommended'][1]['hero.facts'] == 'X  ·  Yesterday'
+    assert rows['recent'][0]['yt.when'] == 'Yesterday'
+    assert asked == ['abcdefghijk', 'zzzzzzzzzzz']  # each once
+
+
+def test_live_now_reads_youtubes_page():
+    assert ytrows.live_now('x', lambda url: '..."isLiveNow":true...') is True
+    assert ytrows.live_now('x', lambda url: '..."isLiveNow":false...') is False
+    assert ytrows.live_now('x', lambda url: '<html></html>') is None
