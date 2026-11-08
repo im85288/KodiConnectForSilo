@@ -55,32 +55,10 @@ def run(argv):
     mode = params.get('mode')
     if mode == 'play':
         return play(handle, params, len(argv) > 3 and argv[3] == 'resume:true')
-    if mode == 'youtubeback':
-        # Back on Skyline's YouTube page.
-        from .context import youtube_back
-        return youtube_back()
-    if mode == 'youtubesearch':
-        # Skyline's YouTube page's search box.
-        from .context import youtube_search
-        return youtube_search()
-    if mode == 'youtubepick':
-        # Skyline's YouTube page: OK on Search's history list.
-        from .context import youtube_pick
-        return youtube_pick()
-    if mode == 'youtubefocus':
-        # Skyline's YouTube page: a section's first row once it has loaded.
-        from .context import youtube_focus
-        ids = [int(i) for i in params.get('ids', '').split(',') if i.isdigit()]
-        controls = [int(i) for i in params.get('controls', '').split(',') if i.isdigit()]
-        return youtube_focus(params.get('section', ''), ids, controls)
     if mode == 'personmenu':
         # Skyline's person page's context menu key (zz_skyline_home.xml).
         from .context import person_menu
         return person_menu()
-    if mode == 'youtubemenu':
-        # Skyline's YouTube page's context menu key (zz_skyline_home.xml).
-        from .context import youtube_menu
-        return youtube_menu()
     if mode == 'homeplay':
         # Skyline's Play/Pause key on Home, Movies and Series (zz_skyline_home.xml).
         from .context import home_play

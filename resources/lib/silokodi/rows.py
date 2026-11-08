@@ -55,8 +55,7 @@ FIELDS = ('type', 'dbid', 'label', 'card.title', 'card.sub', 'card.wide_sub', 'h
           'art.poster', 'art.landscape', 'art.fanart', 'art.clearlogo', 'request.type', 'request.tmdb',
           'status.tint', 'status.seg1', 'status.seg2', 'status.seg3', 'status.seg4',
           'request.library', 'request.state', 'request.more', 'request.logo', 'request.from', 'request.to',
-          'tv.play', 'tv.logo',  # a TV page card's action and channel logo (tvrows.py)
-          'yt.play')  # a YouTube page card's video (ytrows.py)
+          'tv.play', 'tv.logo')  # a TV page card's action and channel logo (tvrows.py)
 
 
 def card(kind, details, show=None, tint='', landscape=''):

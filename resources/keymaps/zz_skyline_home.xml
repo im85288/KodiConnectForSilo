@@ -7,9 +7,7 @@
        Kodi has no context menu for it.
        Play/Pause on Home, Movies and Series: a library title's card plays (a
        show at its next episode), as the hero's Play; elsewhere, as usual.
-     And on Skyline's YouTube page (custom window 1198, which Kodi numbers
-     11198): Play, or Play choosing the video's quality; and Back closes a
-     search's results (else Back as usual). And on its person page (1195,
+     And on Skyline's person page (custom window 1195, which Kodi numbers
      11195): a title Not on server offers Request. -->
 <keymap>
   <home>
@@ -26,36 +24,6 @@
       <play>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homeplay)</play>
     </remote>
   </home>
-  <window11198>
-    <keyboard>
-      <backspace>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubeback)</backspace>
-      <browser_back>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubeback)</browser_back>
-      <c>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</c>
-      <menu>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</menu>
-      <return mod="longpress">RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</return>
-      <enter mod="longpress">RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</enter>
-    </keyboard>
-    <remote>
-      <back>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubeback)</back>
-      <menu>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</menu>
-      <title>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</title>
-    </remote>
-  </window11198>
-  <window1198>
-    <keyboard>
-      <backspace>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubeback)</backspace>
-      <browser_back>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubeback)</browser_back>
-      <c>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</c>
-      <menu>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</menu>
-      <return mod="longpress">RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</return>
-      <enter mod="longpress">RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</enter>
-    </keyboard>
-    <remote>
-      <back>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubeback)</back>
-      <menu>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</menu>
-      <title>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=youtubemenu)</title>
-    </remote>
-  </window1198>
   <window11195>
     <keyboard>
       <c>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=personmenu)</c>

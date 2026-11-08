@@ -270,8 +270,6 @@ msgctxt "#30162"
 msgid "History"
 msgstr ""
 
-
-
 msgctxt "#30165"
 msgid "See all"
 msgstr ""
@@ -464,18 +462,6 @@ msgctxt "#30213"
 msgid "Full resync will start when playback stops"
 msgstr ""
 
-msgctxt "#30214"
-msgid "Play"
-msgstr ""
-
-msgctxt "#30215"
-msgid "Play, choosing quality"
-msgstr ""
-
-msgctxt "#30216"
-msgid "Search YouTube"
-msgstr ""
-
 msgctxt "#30217"
 msgid "Moved from SiloKodiConnect. You can uninstall the old add-on."
 msgstr ""
@@ -532,23 +518,7 @@ msgctxt "#30230"
 msgid "Skyline's Live sport now row shows only matches on channels in the playlist groups ticked here. None ticked: every group. My teams always looks in every group."
 msgstr ""
 
-
 msgctxt "#30233"
 msgid "No Live TV playlist to read groups from"
 msgstr ""
 
-msgctxt "#30234"
-msgid "Subscribe to %s"
-msgstr ""
-
-msgctxt "#30235"
-msgid "Subscribe to this channel"
-msgstr ""
-
-msgctxt "#30236"
-msgid "Extra YouTube channels"
-msgstr ""
-
-msgctxt "#30237"
-msgid "Handles (such as @BrianMenard) of channels you subscribe to that YouTube leaves out of the YouTube add-on's subscriptions, comma separated. Skyline's YouTube Subscriptions shows them with their newest videos."
-msgstr ""
