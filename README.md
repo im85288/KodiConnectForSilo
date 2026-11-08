@@ -45,16 +45,21 @@ Community project: not made or endorsed by the Silo team. Requires Kodi 20 (Nexu
 
 ## Install
 
-Build a zip and use Kodi's **Add-ons -> Install from zip file**:
+Install it from the **im85288 Kodi add-ons** repository, so Kodi keeps it up to date:
 
-```bash
-git archive --format=zip --prefix=plugin.video.kodiconnectforsilo/ -o plugin.video.kodiconnectforsilo.zip HEAD
-```
+1. Kodi: **Settings -> System -> Add-ons**: turn on **Unknown sources**.
+2. **Settings -> File manager -> Add source**: `https://im85288.github.io/kodi-repository/`, named, say, `im85288`.
+3. **Add-ons -> Install from zip file**: `im85288`, then `repository.im85288.kodi.zip`.
+4. **Add-ons -> Install from repository -> im85288 Kodi add-ons -> Video add-ons -> KodiConnectForSilo**.
 
 Kodi installs `script.module.requests` and `script.module.websocket` from its official repository.
-`inputstream.adaptive` is optional and used for converted (HLS) streams when present.
+`inputstream.adaptive` is optional and used for converted (HLS) streams when present. The same repository
+has the [Skyline](https://github.com/im85288/Skyline) skin (**Look and feel -> Skin**).
 
 Then open **Add-ons -> Video add-ons -> KodiConnectForSilo -> Sign in to Silo**.
+
+To try a change before it's released, build a zip of the add-on and use **Install from zip file** instead:
+`git archive --format=zip --prefix=plugin.video.kodiconnectforsilo/ -o plugin.video.kodiconnectforsilo.zip HEAD`.
 
 ## Up Next and skipping intros
 
@@ -103,6 +108,11 @@ the same properties.
   Like This, the Live TV quick guide (with its channel groups on Left, as TiviMate's), catch-up and recent channels, Silo's markers for the seek bar, and the
   playing title's details for the player, with its season and next episode for Episodes and Next Episode
   buttons (`silokodi.playing.season_path`, `.episode_index`, `.next`, `.next_label`). `silokodi.signed_in` says whether you are signed in.
+- **TV page** (when Kodi has TV channels, from IPTV Simple's playlist and guide): rows On now (the channels you
+  watched last, with what's on), Live sport now (live matches in the guide, one card across a match's channels,
+  UHD and English feeds first) and My teams (your teams' matches, and their next fixture from TheSportsDB
+  before the guide lists it), as `silo.tv.<n>.<card>.<field>`; the last channel watched plays behind the page,
+  following the card you rest on. A match yet to start can have a reminder.
 - **Keys:** with Skyline as the skin, the add-on installs keymaps in `userdata/keymaps`: Live TV's (as
   TiviMate's), the player's (Back on the pause screen) and Home's (the context menu key on a Continue
   Watching card), and takes them away for any other skin.
@@ -116,6 +126,10 @@ the same properties.
   (UHD Blu-ray remuxes) to 8.1. Without the profile 7 option Silo strips such files to HDR10 in a converted
   4K stream, which the SHIELD can't hardware-decode in Kodi; the add-on refuses those with a message.
 - **Playback -> Live TV keys as TiviMate** (with Skyline): OK the recent channels, Left the quick guide.
+- **Playback -> My teams** (with Skyline's TV page): your teams, comma separated (`Newcastle United, Newcastle
+  Utd`): every name a guide may use for a team.
+- **Playback -> Live sport groups** (with Skyline's TV page): a tick list of your playlist's groups for Live
+  sport now; none ticked, every group. My teams always looks in every group.
 - **Playback -> Top 10 rows** chooses which Home rows Skyline numbers, as Netflix's Top 10 (Skyline's own
   settings open the same choice). Until you choose: rows titled Trending This Week or IMDb Popular.
 - **Playback -> Theme music on show pages** (on by default; Skyline's skin settings turn it off too).
@@ -185,6 +199,14 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 `datetime.strptime` after its first use, so dates are parsed by hand.
 
 ## Changes
+
+### v0.17.0 (2026-11-08)
+- **Skyline's YouTube page removed:** the YouTube Android app does it better. Its rows, their fetching, the
+  extra YouTube channels setting and the YouTube window's keys are gone. Fetching the rows inside Kodi had cost
+  ~60 MB that a 2 GB SHIELD then lacked to start 4K, and a fetch during 4K playback stuttered it. Trailers and
+  Trailers & More still play through the YouTube add-on.
+- **Skyline's TV page:** My teams is the last row, after On now and Live sport now.
+- **Install** from the im85288 Kodi add-ons repository (see Install).
 
 ### v0.16.0 (2026-11-07)
 - **Skyline's YouTube page:** Recommended, Subscriptions, Trending, Watch later, History and Liked as cards, with
