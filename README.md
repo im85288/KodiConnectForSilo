@@ -48,7 +48,7 @@ Community project: not made or endorsed by the Silo team. Requires Kodi 20 (Nexu
 Install it from the **im85288 Kodi add-ons** repository, so Kodi keeps it up to date:
 
 1. Kodi: **Settings -> System -> Add-ons**: turn on **Unknown sources**.
-2. **Settings -> File manager -> Add source**: `https://im85288.github.io/kodi-repository/`, named, say, `im85288`.
+2. **Settings -> File manager -> Add source**: `https://kodi.im85288.uk/`, named, say, `im85288`.
 3. **Add-ons -> Install from zip file**: `im85288`, then `repository.im85288.kodi.zip`.
 4. **Add-ons -> Install from repository -> im85288 Kodi add-ons -> Video add-ons -> KodiConnectForSilo**.
 
