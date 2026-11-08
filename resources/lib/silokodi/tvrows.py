@@ -23,7 +23,8 @@ import xml.etree.ElementTree as ET
 from . import kodi
 
 TEAMS_ROW, ON_NOW_ROW, SPORT_ROW = 'teams', 'onnow', 'sport'
-ROWS = ((TEAMS_ROW, 'My teams'), (ON_NOW_ROW, 'On now'), (SPORT_ROW, 'Live sport now'))
+# My teams last: it's often a fixture days off, On now what's playing (the user's order).
+ROWS = ((ON_NOW_ROW, 'On now'), (SPORT_ROW, 'Live sport now'), (TEAMS_ROW, 'My teams'))
 CARDS = 12
 AHEAD = datetime.timedelta(days=7)
 MATCH_WINDOW = datetime.timedelta(minutes=75)

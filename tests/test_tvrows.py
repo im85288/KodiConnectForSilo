@@ -125,7 +125,7 @@ def test_the_layout_has_the_tv_pages_rows_but_not_as_one_of_silos_pages():
     from resources.lib.silokodi.sync import skin_layout
     layout = skin_layout([], [], {})
     assert 'tv' not in layout['silo.pages'].split(',')
-    assert [layout['silo.tv.%d.title' % n] for n in (1, 2, 3)] == ['My teams', 'On now', 'Live sport now']
+    assert [layout['silo.tv.%d.title' % n] for n in (1, 2, 3)] == ['On now', 'Live sport now', 'My teams']
     assert layout['silo.tv.4.title'] == ''
 
 
