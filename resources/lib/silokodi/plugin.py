@@ -63,6 +63,10 @@ def run(argv):
         # Skyline's Play/Pause key on Home, Movies and Series (zz_skyline_home.xml).
         from .context import home_play
         return home_play()
+    if mode == 'homeback':
+        # Back on Home (zz_skyline_home.xml): Skyline's TV page, past its preview.
+        from .context import home_back
+        return home_back()
     if mode == 'homemenu':
         # Home's context menu key (zz_skyline_home.xml).
         from .context import home_menu

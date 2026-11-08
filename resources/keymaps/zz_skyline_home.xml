@@ -7,6 +7,8 @@
        Kodi has no context menu for it.
        Play/Pause on Home, Movies and Series: a library title's card plays (a
        show at its next episode), as the hero's Play; elsewhere, as usual.
+       Back on the TV page, its preview playing: to the TV tab, not full
+       screen (Kodi's Home takes Back to full screen while anything plays).
      And on Skyline's person page (custom window 1195, which Kodi numbers
      11195): a title Not on server offers Request. -->
 <keymap>
@@ -17,11 +19,14 @@
       <return mod="longpress">RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homemenu)</return>
       <enter mod="longpress">RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homemenu)</enter>
       <play_pause>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homeplay)</play_pause>
+      <backspace>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homeback)</backspace>
+      <browser_back>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homeback)</browser_back>
     </keyboard>
     <remote>
       <menu>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homemenu)</menu>
       <title>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homemenu)</title>
       <play>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homeplay)</play>
+      <back>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=homeback)</back>
     </remote>
   </home>
   <window11195>

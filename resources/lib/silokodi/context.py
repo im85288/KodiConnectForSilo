@@ -67,6 +67,26 @@ def home_play():
     play_item(kind, dbid)
 
 
+# Skyline's TV page: its tab, and the condition it's showing with its preview
+# playing (build_home.py's TV_TAB and TV_PREVIEWING).
+TV_TAB = 9006
+TV_PREVIEWING = ('VideoPlayer.Content(LiveTV) + Window.IsActive(home) + '
+                 'String.IsEqual(Window(Home).Property(silo.page),tv)')
+BAR = 9000  # Skyline's menu bar
+
+
+def home_back():
+    """Back on Home (zz_skyline_home.xml). Kodi's Home goes full screen on Back
+    whenever something plays, before the focused control's own Back: on
+    Skyline's TV page, whose preview always plays, Back from its rows and
+    buttons goes to the TV tab, as on the other pages; from the bar, full
+    screen as before. Anywhere else, Back as usual."""
+    if xbmc.getCondVisibility(TV_PREVIEWING) and not xbmc.getCondVisibility('ControlGroup(%d).HasFocus()' % BAR):
+        xbmc.executebuiltin('SetFocus(%d)' % TV_TAB)
+        return
+    xbmc.executebuiltin('Action(Back)')
+
+
 PERSON_GRID = 5301  # Skyline's person page's titles
 
 
