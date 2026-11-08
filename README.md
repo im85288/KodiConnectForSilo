@@ -200,6 +200,10 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.17.1 (2026-11-08)
+- **Skyline's TV page:** Back from its rows and buttons goes to the TV tab, as on the other pages. Kodi's Home
+  goes full screen on Back whenever something plays, and the page's preview always does.
+
 ### v0.17.0 (2026-11-08)
 - **Skyline's YouTube page removed:** the YouTube Android app does it better. Its rows, their fetching, the
   extra YouTube channels setting and the YouTube window's keys are gone. Fetching the rows inside Kodi had cost
