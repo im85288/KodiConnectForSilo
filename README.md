@@ -200,6 +200,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.18.1 (2026-11-12)
+- **Best copy of a title:** a title with several copies (a 1080p and a 4K file) played Silo's first-listed copy
+  or the last one played. Silo lists them by file id, so an older 1080p copy came first, and once played the
+  server's `last_file_id` kept Kodi on it, even after reinstalling Kodi. The add-on now ranks them as Silo does for
+  its own default (resolution, then HDR, then size) and plays the best that fits the Highest resolution setting.
+
 ### v0.18.0 (2026-11-12)
 - **Asks what the TV shows:** the Playback settings (highest resolution and HDR) default to 1080p SDR, so a 4K TV
   got 1080p until someone found them; changing Silo's own quality setting doesn't reach Kodi. The add-on now asks
