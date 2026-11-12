@@ -190,13 +190,13 @@ class PlaybackManager(object):
     def start(self, content_id, resume=False):
         """Start a Silo session; returns what Kodi needs to play it."""
         item = self.client.item(content_id)
-        version = mapping.default_version(item)
+        settings = self.settings()
+        version = mapping.default_version(item, settings.get('max_resolution', '1080p'))
         if not version or not version.get('file_id'):
             raise PlaybackError('Silo has no playable file for this title.')
         profile_id = self.client.store.get('profile_id')
         if not profile_id:
             raise PlaybackError('Choose a Silo profile first.')
-        settings = self.settings()
         client_caps, context = capabilities(self.version, settings.get('max_resolution', '1080p'),
                                             settings.get('dynamic_range', 'sdr'))
         body = {

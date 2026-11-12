@@ -175,6 +175,24 @@ def test_start_builds_a_v3_request_and_returns_a_signed_url(store):
     assert 'Authorization' not in json.dumps(answer)
 
 
+TWO_COPIES = [{'file_id': '7', 'resolution': '1080p', 'hdr': False, 'file_size': 9},
+              {'file_id': '8', 'resolution': '2160p', 'hdr': False, 'file_size': 50},
+              {'file_id': '9', 'resolution': '2160p', 'hdr': True, 'file_size': 40}]
+
+
+@pytest.mark.parametrize('max_resolution, file_id', [('2160p', '9'), ('1080p', '7'), ('720p', '9')])
+def test_a_title_with_several_copies_plays_the_best_the_tv_shows(store, max_resolution, file_id):
+    # Silo lists them by file id, and the last played was the 1080p copy:
+    # neither may decide (a 4K TV got 1080p). Nothing fits: Silo's best.
+    item = movie(versions=TWO_COPIES, user_data={'played': False, 'last_file_id': '7'})
+    mgr, client = manager(store, [('GET', '/api/v2/catalog/items/movie-1', Response(200, item)),
+                                  ('GET', '/api/v2/playback/capabilities', Response(200, CAPABILITY)),
+                                  ('POST', '/api/v2/playback/start', Response(201, plan()))],
+                          {'max_resolution': max_resolution, 'dynamic_range': 'dv'})
+    mgr.start('movie-1')
+    assert client.session.sent[2][2]['file_id'] == file_id
+
+
 def test_start_retries_once_after_installation_changed(store):
     mgr, client = manager(store, [
         ('GET', '/api/v2/catalog/items/movie-1', Response(200, movie())),

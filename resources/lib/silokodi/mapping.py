@@ -359,13 +359,28 @@ OVERLAY_AUDIO = {'atmos': 'eac3_ddp_atmos', 'truehd atmos': 'truehd_atmos', 'eac
                  'mp3': 'mp3'}
 
 
-def default_version(item):
-    versions = item.get('versions') or []
-    last = (item.get('user_data') or {}).get('last_file_id')
-    for version in versions:
-        if last and version.get('file_id') == last:
-            return version
-    return versions[0] if versions else None
+def resolution_height(resolution):
+    """'2160p' -> 2160; 0 when unknown."""
+    text = (resolution or '').strip().lower()
+    if text in RESOLUTION_SIZES:
+        return RESOLUTION_SIZES[text][1]
+    digits = text[:-1] if text.endswith('p') else ''
+    return int(digits) if digits.isdigit() else 0
+
+
+def default_version(item, max_resolution=None):
+    """The file to play of a title with several (a 1080p and a 4K copy):
+    the best that fits max_resolution, else the best, in Silo's own order
+    for its default (resolution, then HDR, then size). Silo lists versions
+    by file id, so the first was often an older 1080p copy, and Kodi then
+    played 1080p on a 4K TV; the last one played (last_file_id) was that
+    copy again, so it isn't followed either."""
+    versions = sorted(item.get('versions') or [],
+                      key=lambda v: (resolution_height(v.get('resolution')), bool(v.get('hdr')),
+                                     v.get('file_size') or 0), reverse=True)
+    limit = resolution_height(max_resolution)
+    fitting = [v for v in versions if limit and 0 < resolution_height(v.get('resolution')) <= limit]
+    return (fitting or versions or [None])[0]
 
 
 # ----- watch state -----
