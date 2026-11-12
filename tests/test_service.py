@@ -183,6 +183,56 @@ def test_the_early_port_is_skipped_when_something_else_has_it():
         taken.close()
 
 
+def test_stopping_frees_the_relay_port_even_when_a_step_fails(logged):
+    # Turned off or updated, the add-on is unregistered before its service
+    # stops: saving the details raised, the relay was never closed, Kodi
+    # killed the service and the next one found the port taken.
+    from resources.lib.silokodi.relay import Relay
+    relay = Relay(client=None, db=None, refresh_art=None, play=None, command=None, port=0)
+    relay.start()
+    port = relay._server.server_address[1]
+    done = []
+
+    def fail():
+        raise RuntimeError("Unknown addon id 'plugin.video.kodiconnectforsilo'.")
+    worker = threading.Thread(target=lambda: None)
+    worker.start()
+    service = bare_service(
+        relay=relay, stop_listener=lambda: done.append('events'), save_details=fail,
+        playback=type('Playback', (), {'on_stopped': lambda self, seconds: done.append('playback')})(),
+        player=type('Player', (), {'last_time': 12.0})(),
+        db=type('DB', (), {'close': lambda self: done.append('database')})())
+    started = time.time()
+    service.shut_down(worker)
+    assert time.time() - started < 5  # inside the time Kodi allows
+    assert done == ['events', 'playback', 'database']
+    assert ('log_warning', "Stopping (details): Unknown addon id 'plugin.video.kodiconnectforsilo'.") in logged
+    again = socket.socket()
+    try:
+        again.bind(('127.0.0.1', port))  # free for the next service
+    finally:
+        again.close()
+
+
+def test_the_data_folder_is_still_known_once_the_addon_is_unregistered(monkeypatch):
+    monkeypatch.setattr(kodi, '_PROFILE', [])
+    monkeypatch.setattr(kodi.xbmcvfs, 'translatePath', lambda path: '/data/silo/')
+    asked = []
+
+    class Addon(object):
+        def getAddonInfo(self, key):
+            asked.append(key)
+            return 'special://profile/addon_data/silo/'
+    monkeypatch.setattr(kodi, 'addon', Addon)
+    assert kodi.profile_dir() == '/data/silo/'
+
+    def gone():
+        raise RuntimeError("Unknown addon id 'plugin.video.kodiconnectforsilo'.")
+    monkeypatch.setattr(kodi, 'addon', gone)
+    assert kodi.profile_dir() == '/data/silo/'
+    assert asked == ['profile']
+
+
 def test_the_relay_port_is_the_settings_or_silos_default():
     class Addon(object):
         def __init__(self, value):

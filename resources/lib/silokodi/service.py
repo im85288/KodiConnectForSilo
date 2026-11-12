@@ -42,6 +42,7 @@ DICEBEAR = 'https://api.dicebear.com/'
 COLLECTION_LIMIT = 500      # titles listed from one collection
 TRAILER_COVER_MAX = 10      # seconds the skin's trailer cover can wait for its page
 TRAILER_START_MAX = 12      # ...or for a trailer to start (none found: back to the page)
+WORKER_STOP_WAIT = 2        # seconds to let a running task end when Kodi stops the service (it kills at 5)
 TRAILER_QUIET = 0.75        # seconds after Kodi's busy spinner with no video: it failed
 PERSONAL_QUIET = 30          # fetch the profile's lists again once its watch state settles...
 PERSONAL_WAIT = 300          # ...or this long after the first change
@@ -372,13 +373,27 @@ class Service(object):
             except Exception as error:  # one bad second must not end the service
                 self.tick_failed(error)
         kodi.log('Stopping KodiConnectForSilo')
-        self.save_details()
-        self.playback.on_stopped(self.player.last_time)
-        self.stop_listener()
-        self.relay.stop()
-        self.tasks.put((-1, next(self.task_number), None))
-        worker.join(10)
-        self.db.close()
+        self.shut_down(worker)
+
+    def shut_down(self, worker):
+        """Stop, within the 5 s Kodi allows. The relay's port is closed
+        first: a service Kodi has to kill keeps it until Kodi restarts, and
+        the next one (after an update, or the add-on turned off and on)
+        then can't listen, so artwork stops loading. One failing step must
+        not skip the rest: saving the details once failed, and the relay
+        was never closed."""
+        steps = (('relay', self.relay.stop),
+                 ('events', self.stop_listener),
+                 ('details', self.save_details),
+                 ('playback', lambda: self.playback.on_stopped(self.player.last_time)),
+                 ('worker', lambda: (self.tasks.put((-1, next(self.task_number), None)),
+                                     worker.join(WORKER_STOP_WAIT))),
+                 ('database', self.db.close))
+        for name, step in steps:
+            try:
+                step()
+            except Exception as error:  # the next step still runs
+                kodi.log_warning('Stopping (%s): %s' % (name, error))
 
     def tick(self, ticks):
         """The main loop's second: what's due now."""

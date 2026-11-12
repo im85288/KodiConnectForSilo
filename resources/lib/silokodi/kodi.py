@@ -25,8 +25,17 @@ def version():
     return addon().getAddonInfo('version')
 
 
+_PROFILE = []
+
+
 def profile_dir():
-    path = xbmcvfs.translatePath(addon().getAddonInfo('profile'))
+    """The add-on's data folder. Kept once known: when the add-on is turned
+    off or updated, Kodi unregisters it before stopping the service, and
+    asking for it then fails ("Unknown addon id"), which broke the service's
+    shutdown."""
+    if not _PROFILE:
+        _PROFILE.append(xbmcvfs.translatePath(addon().getAddonInfo('profile')))
+    path = _PROFILE[0]
     if not xbmcvfs.exists(path):
         xbmcvfs.mkdirs(path)
     return path
