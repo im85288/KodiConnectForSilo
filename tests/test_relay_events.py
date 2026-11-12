@@ -338,3 +338,65 @@ def test_an_image_asked_for_before_the_relay_starts_waits_for_it(tmp_path):
         assert port not in quickstart.LISTENING
     finally:
         server.stop()
+
+
+def test_a_stream_silo_drops_mid_film_carries_on_from_where_it_broke(tmp_path):
+    # Paused, Kodi reads nothing; Silo's side closed the idle connection, and
+    # Kodi used to get what it had and end the film there.
+    import socket as socket_module
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from urllib.request import Request
+
+    from resources.lib.silokodi import relay as relay_module
+
+    payload = bytes(range(256)) * 20000  # 5 MB
+    asked = []
+
+    class Breaking(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            ranged = self.headers.get('Range')
+            asked.append(ranged)
+            start, _, end = ranged.split('=')[1].partition('-')
+            start, end = int(start), int(end) if end else len(payload) - 1
+            self.send_response(206)
+            self.send_header('Content-Range', 'bytes %d-%d/%d' % (start, end, len(payload)))
+            self.send_header('Content-Length', str(end - start + 1))
+            self.end_headers()
+            body = payload[start:end + 1]
+            if len(asked) == 1:  # the first answer breaks part way
+                self.wfile.write(body[:1500000])
+                self.wfile.flush()
+                self.connection.shutdown(socket_module.SHUT_RDWR)
+                return
+            self.wfile.write(body)
+
+    upstream = ThreadingHTTPServer(('127.0.0.1', 0), Breaking)
+    threading.Thread(target=upstream.serve_forever, daemon=True).start()
+
+    class LocalClient(Client):
+        server_url = 'http://127.0.0.1:%d' % upstream.server_address[1]
+
+        def ensure_fresh_token(self):
+            pass
+
+    logged = []
+    server = Relay(LocalClient(), SyncDB(str(tmp_path)), lambda c: None, lambda q: {}, lambda n, q: {},
+                   port=free_port(), log=logged.append, media_allowed=lambda path: 'sess-1' in path)
+    server.start()
+    try:
+        url = server.media_url(LocalClient.server_url + '/api/v2/stream/sess-1?st=signed')
+        with urlopen(Request(url, headers={'Range': 'bytes=1000-'}), timeout=10) as response:
+            assert response.read() == payload[1000:]
+        assert asked[0] == 'bytes=1000-' and asked[1].startswith('bytes=') and len(asked) == 2
+        resumed_at = int(asked[1].split('=')[1].split('-')[0])
+        assert 1000 < resumed_at <= 1000 + 1500000
+        assert any('reconnecting' in line for line in logged)
+    finally:
+        server.stop()
+        upstream.shutdown()
+    assert relay_module.content_range(type('R', (), {'status_code': 206, 'headers':
+                                                     {'Content-Range': 'bytes 5-9/10'}})()) == (5, 9)

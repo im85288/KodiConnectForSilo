@@ -31,12 +31,17 @@ except ImportError:  # pragma: no cover
     raise
 
 import requests
+from urllib3.exceptions import HTTPError as Urllib3Error
 
 from . import quickstart
 from .mapping import RELAY_PORT as DEFAULT_PORT
 CHUNK = 64 * 1024
 MEDIA_CHUNK = 1024 * 1024
 STATS_EVERY = 30
+# Reconnections to Silo in a row, for one request of Kodi's, before giving up.
+UPSTREAM_RETRIES = 3
+# A read from Silo that fails: the connection closed or timed out.
+UPSTREAM_ERRORS = (Urllib3Error, requests.RequestException, OSError)
 # Request headers Kodi's player sends that the media server needs to see.
 FORWARD_REQUEST = ('Range', 'If-Range', 'Accept', 'Accept-Encoding')
 FORWARD_RESPONSE = ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges', 'ETag',
@@ -135,32 +140,73 @@ class Handler(BaseHTTPRequestHandler):
                 self.close_connection = True
             self.end_headers()
             if not head:
-                self.copy(relay, response)
+                def reopen(sent):
+                    return relay.reopen_media(path, parts.query, headers, response, sent)
+                response = self.copy(relay, response, reopen)
         except (socket.error, ConnectionError):
             pass  # Kodi closes connections when it seeks
         finally:
             response.close()
 
-    def copy(self, relay, response):
-        """Copy the media body, timing where the waits are.
+    def copy(self, relay, response, reopen=None):
+        """Copy the media body, timing where the waits are; returns the
+        response it ended on.
 
         Raw reads skip requests' chunk iterator; the media is never
         content-encoded. Every STATS_EVERY seconds the log says how fast the
         relay sends and what share of the time it waited on Silo (network
         or server slow), on Kodi (its buffer is full: the relay keeps up)
         or on neither (Python itself is the limit).
+
+        While Kodi is paused it reads nothing, so the relay's connection to
+        Silo sits idle and gets closed; Kodi then got the bytes it had and
+        ended the film as if it had finished. A read that fails asks
+        reopen(bytes sent) for the rest, from the byte it stopped at.
         """
         raw = response.raw
         stats = Stats(relay.log)
+        sent = retries = 0
         while True:
             started = time.time()
-            data = raw.read(MEDIA_CHUNK, decode_content=False)
+            try:
+                data = raw.read(MEDIA_CHUNK, decode_content=False)
+            except UPSTREAM_ERRORS as error:
+                if reopen is None or retries >= UPSTREAM_RETRIES:
+                    raise
+                retries += 1
+                relay.log('Relay: Silo\'s stream broke after %d MB (%s); reconnecting'
+                          % (sent // (1024 * 1024), type(error).__name__))
+                response.close()
+                response = reopen(sent) or response
+                if response.raw is raw:
+                    raise
+                raw = response.raw
+                continue
             read_done = time.time()
             if not data:
                 break
+            retries = 0
             self.wfile.write(data)
+            sent += len(data)
             stats.add(len(data), read_done - started, time.time() - read_done)
         stats.report(final=True)
+        return response
+
+
+def content_range(response):
+    """(first byte, last byte or None) a media response starts at: its
+    Content-Range for a 206, 0 for a whole 200; (None, None) if unknown."""
+    if response.status_code == 200:
+        return 0, None
+    value = response.headers.get('Content-Range') or ''
+    if response.status_code != 206 or not value.startswith('bytes '):
+        return None, None
+    span = value[6:].split('/')[0]
+    first, _, last = span.partition('-')
+    try:
+        return int(first), int(last)
+    except ValueError:
+        return None, None
 
 
 class Stats(object):
@@ -277,6 +323,27 @@ class Relay(object):
         if (target.scheme, target.netloc) != (server.scheme, server.netloc):
             return url
         return 'http://127.0.0.1:%d/media%s%s' % (self.port, target.path, '?' + target.query if target.query else '')
+
+    def reopen_media(self, path, query, headers, broken, sent):
+        """The rest of a media body that broke after `sent` bytes: the same
+        request from the byte it stopped at, or None if Silo can't give
+        exactly that (then Kodi gets what it had, as before)."""
+        first, last = content_range(broken)
+        if first is None:
+            return None
+        wanted = 'bytes=%d-%s' % (first + sent, '' if last is None else last)
+        resumed = dict((k, v) for k, v in headers.items() if k != 'If-Range')
+        resumed['Range'] = wanted
+        try:
+            response = self.fetch_media('GET', path, query, resumed)
+        except requests.RequestException as error:
+            self.log('Relay: reconnecting to Silo failed: %s' % error)
+            return None
+        if response.status_code != 206 or content_range(response)[0] != first + sent:
+            self.log('Relay: Silo answered the reconnection with %s' % response.status_code)
+            response.close()
+            return None
+        return response
 
     def fetch_media(self, method, path, query, headers):
         url = self.client.server_url + path + ('?' + query if query else '')
