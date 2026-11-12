@@ -200,6 +200,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.18.2 (2026-11-12)
+- **4K labels for titles with two copies:** 0.18.1 plays a title's best copy, but titles synced before it kept
+  the label of the copy Silo listed first (often 1080p), since a sync rewrites a title only when Silo changes it.
+  Once per library, the first sync after updating asks Silo for the titles with a 4K file and rewrites the ones
+  Kodi labels below 4K; nothing else is fetched again. Episode labels now come from the best copy too.
+
 ### v0.18.1 (2026-11-12)
 - **Best copy of a title:** a title with several copies (a 1080p and a 4K file) played Silo's first-listed copy
   or the last one played. Silo lists them by file id, so an older 1080p copy came first, and once played the
