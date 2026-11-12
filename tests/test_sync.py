@@ -1293,3 +1293,46 @@ def test_removing_everything_adds_it_back_at_once_with_fresh_images(monkeypatch)
     assert removed == ['1', '2'] and cleared == [True]
     assert calls == ['Textures.GetTextures'] and queued == ['sync']
 
+
+
+# ----- labels from a title's best copy (0.18.1) -----
+
+def _widths(query):
+    return dict(query("SELECT f.strFilename, s.iVideoWidth FROM streamdetails s JOIN files f USING (idFile) "
+                      "WHERE s.iStreamType = 0"))
+
+
+def test_titles_labelled_from_an_older_1080p_copy_are_relabelled_once(silo, syncer, query):
+    # Written before 0.18.1: the 1080p copy came first, so Kodi says 1080p.
+    hd = {'file_id': '7', 'resolution': '1080p', 'codec_video': 'h264', 'hdr': False,
+          'video_tracks': [{'codec': 'h264', 'width': 1920, 'height': 1080}]}
+    uhd = silo.movies['movie-1']['versions'][0]
+    silo.movies['movie-1']['versions'] = [hd]
+    episode_files = silo.episodes_of[('series-1', 1)][0]['files']
+    silo.episodes_of[('series-1', 1)][0]['files'] = [dict(episode_files[0], resolution='1080p', file_id='e7')]
+    syncer.sync()
+    syncer.db.set_meta(sync_module.RELABELLED, [])  # as if synced by 0.18.0
+    widths = _widths(query)
+    assert widths[mapping.MOVIES_PATH + '?mode=play&id=movie-1&type=movie'] == 1920
+    # Silo lists the copies by file id: the 1080p one is still first.
+    silo.movies['movie-1']['versions'] = [hd, uhd]
+    silo.episodes_of[('series-1', 1)][0]['files'] = [dict(episode_files[0], resolution='1080p', file_id='e7'),
+                                                     episode_files[0]]
+    silo.calls[:] = []
+    syncer.sync()
+    widths = _widths(query)
+    assert widths[mapping.MOVIES_PATH + '?mode=play&id=movie-1&type=movie'] == 3840
+    assert all(width == 3840 for width in widths.values())
+    # Only the mislabelled titles were fetched again: not Thief, already 4K.
+    assert ('item', 'movie-1') in silo.calls and ('item', 'movie-2') not in silo.calls
+    assert ('season_episodes', 'series-1', 2) not in silo.calls
+    # Once: the next sync doesn't ask Silo again.
+    silo.calls[:] = []
+    syncer.sync()
+    assert not [c for c in silo.calls if c[0] in ('ids_with_resolution', 'item')]
+
+
+def test_a_fresh_library_is_not_checked_for_old_labels(silo, syncer):
+    syncer.sync()
+    assert not [c for c in silo.calls if c[0] == 'ids_with_resolution']
+    assert sorted(syncer.db.meta(sync_module.RELABELLED)) == ['1:movie', '2:episode']

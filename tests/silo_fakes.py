@@ -107,6 +107,17 @@ class FakeSilo(object):
             return [card_of(e) for episodes in self.episodes_of.values() for e in episodes]
         return []
 
+    def ids_with_resolution(self, library_id, media_type, resolution):
+        self.calls.append(('ids_with_resolution', library_id, media_type, resolution))
+        if library_id == '1' and media_type == 'movie':
+            titles = self.movies.values()
+        elif library_id == '2' and media_type == 'episode':
+            titles = [e for episodes in self.episodes_of.values() for e in episodes]
+        else:
+            titles = []
+        return [t['content_id'] for t in titles
+                if any(f.get('resolution') == resolution for f in t.get('versions') or t.get('files') or [])]
+
     def box_set(self, box_set_id, library_id):
         self.calls.append(('box_set_detail', box_set_id))
         box = self.box_sets[str(box_set_id)]

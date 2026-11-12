@@ -26,6 +26,11 @@ BOX_SET_CHECKS = 400  # films a sync asks Silo about, at most
 BOX_SET_RECHECK = 24 * 3600  # seconds until a film is asked about again
 SEASON_BATCH = 50
 FETCH_WORKERS = 4
+# Meta: the "library id:type" pairs whose labels were checked against a
+# title's best copy (relabel). Before 0.18.1 a title with a 1080p and a 4K
+# copy was written from the first one Silo listed, often the 1080p one.
+RELABELLED = 'relabelled_best_copy'
+UHD_WIDTH = 3000  # Kodi's stored width at or above this is a 4K label
 
 
 # Rows about what to watch next: a show card there means its next episode.
@@ -269,6 +274,8 @@ class Syncer(object):
         self.art_changed = set()
         # {content id: Silo's ambient tint}, from the cards each sync lists.
         self.tints = {}
+        # "library id:type" pairs this sync listed for relabel (RELABELLED).
+        self.relabel_ready = set()
         self._base, self._span = 0.0, 100.0
 
     def step(self, fraction, message):
@@ -404,6 +411,7 @@ class Syncer(object):
     def sync_movies(self, library):
         library_id = str(library['id'])
         self._repair_movies(library_id)
+        relabel = self.relabel(library_id, 'movie')
         # Read a page at a time and keep only ids and fingerprints: on a 2 GB
         # SHIELD every MB the sync holds is one Kodi lacks when a film starts.
         seen, fetch, states = set(), [], []
@@ -413,7 +421,8 @@ class Syncer(object):
             self.tints[content_id] = mapping.ambient_tint(card.get('poster_thumbhash') or '')
             row = self.db.get(content_id)
             fingerprint = mapping.fingerprint(card)
-            if not self._unchanged(row, card, fingerprint) or row['library_id'] != library_id:
+            if not self._unchanged(row, card, fingerprint) or row['library_id'] != library_id \
+                    or content_id in relabel:
                 fetch.append((content_id, fingerprint))
             elif row['state'] != mapping.state_fingerprint(card):
                 states.append((row, {'user_state': card.get('user_state'), 'runtime': card.get('runtime'),
@@ -431,6 +440,7 @@ class Syncer(object):
                     if item:
                         self.write_movie(kodi, item, library, fingerprint)
         self.apply_states(states)
+        self.relabelled(library_id, 'movie')
         gone = [] if self.household else \
             [row for row in self.db.items('movie', library_id) if row['content_id'] not in seen]
         for batch in chunks(gone, BATCH):
@@ -625,6 +635,7 @@ class Syncer(object):
         # A big library has tens of thousands of episode cards, over 100 MB
         # as Python objects, which got Kodi killed for memory on a 2 GB
         # SHIELD. Read them a page at a time and keep only what's needed.
+        relabel = self.relabel(library_id, 'episode')
         stale_seasons = OrderedDict()
         seen_episodes = set()
         states = []
@@ -637,7 +648,7 @@ class Syncer(object):
             seen_episodes.add(content_id)
             row = self.db.get(content_id)
             fingerprint = mapping.fingerprint(card)
-            if not self._unchanged(row, card, fingerprint):
+            if not self._unchanged(row, card, fingerprint) or content_id in relabel:
                 stale_seasons.setdefault((card['series_id'], card.get('season_number')), {})[content_id] = {
                     'added_at': card.get('added_at'), 'fingerprint': fingerprint}
             elif row['state'] != mapping.state_fingerprint(card):
@@ -673,6 +684,7 @@ class Syncer(object):
                     if episodes is not None:
                         self.write_episodes(kodi, key[0], key[1], episodes, stale_seasons[key])
         self.apply_states(states)
+        self.relabelled(library_id, 'episode')
         # Remove what left Silo (not what a household profile can't see).
         if self.household:
             return
@@ -684,6 +696,38 @@ class Syncer(object):
             if row['content_id'] not in seen_series:
                 with self.writing() as kodi:
                     self._remove_show(kodi, row)
+
+    def relabel(self, library_id, media_type):
+        """Once per library and type: the titles with a 4K copy that Kodi
+        labels below 4K, to write again from their best copy (RELABELLED).
+        Empty once done, or if Silo can't answer (tried again next sync)."""
+        if '%s:%s' % (library_id, media_type) in (self.db.meta(RELABELLED) or []):
+            return set()
+        if not self.db.items(media_type, library_id):  # nothing written yet: written right first time
+            self.relabel_ready.add('%s:%s' % (library_id, media_type))
+            return set()
+        with self.open_kodi() as kodi:
+            kodi.cursor.execute('SELECT idFile, MAX(iVideoWidth) FROM streamdetails '
+                                'WHERE iStreamType = 0 GROUP BY idFile')
+            widths = dict(kodi.cursor.fetchall())
+        found = set()
+        try:
+            for content_id in self.client.ids_with_resolution(library_id, media_type, '2160p'):
+                row = self.db.get(content_id)
+                if row and row['kodi_file_id'] and (widths.get(row['kodi_file_id']) or 0) < UHD_WIDTH:
+                    found.add(content_id)
+        except ApiError as error:
+            self.log('Could not list 4K titles to relabel: %s' % error)
+            return set()
+        self.log('Library %s: %d %ss with a 4K copy labelled below 4K' % (library_id, len(found), media_type))
+        self.relabel_ready.add('%s:%s' % (library_id, media_type))
+        return found
+
+    def relabelled(self, library_id, media_type):
+        """The library's titles were written: don't check them again."""
+        key = '%s:%s' % (library_id, media_type)
+        if key in self.relabel_ready:
+            self.db.set_meta(RELABELLED, sorted(set(self.db.meta(RELABELLED) or []) | {key}))
 
     @contextmanager
     def writing(self):

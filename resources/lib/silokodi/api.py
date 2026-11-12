@@ -208,6 +208,21 @@ class SiloClient(object):
         the primary profile's only), the ones it hid from its menus too."""
         return self.get('/user/libraries', include_hidden='true').get('items') or []
 
+    def ids_with_resolution(self, library_id, media_type, resolution):
+        """Content ids of a library's titles of one type ('movie', 'episode')
+        with a file at this resolution ('2160p'), from Silo's catalog query."""
+        query = {'library_id': str(library_id), 'type': media_type, 'skip_total': True, 'limit': 100,
+                 'groups': [{'match': 'all', 'rules': [{'field': 'resolution', 'op': 'is', 'value': resolution}]}]}
+        cursor = None
+        while True:
+            page = self.post('/catalog/query', dict(query, cursor=cursor) if cursor else query)
+            for item in page.get('items') or []:
+                yield item.get('content_id')
+            info = page.get('page') or {}
+            cursor = info.get('next_cursor')
+            if not info.get('has_more') or not cursor:
+                return
+
     def catalog(self, library_id, media_type):
         """Every card of one type in a library, in a stable order."""
         return self.pages('/catalog', library_id=library_id, type=media_type, sort='added_at',

@@ -323,7 +323,7 @@ def episode_stream_details(episode):
     files = episode.get('files') or []
     if not files:
         return None
-    first = files[0]
+    first = best_copies(files)[0]  # the copy Silo plays by default, not the first listed
     width, height = RESOLUTION_SIZES.get((first.get('resolution') or '').lower(), (None, None))
     details = {'video': [], 'audio': [], 'subtitle': []}
     # Silo's card summary names the HDR format and audio codec the file
@@ -368,6 +368,14 @@ def resolution_height(resolution):
     return int(digits) if digits.isdigit() else 0
 
 
+def best_copies(files):
+    """A title's files (versions, or a season listing's file summaries),
+    best first, in Silo's own order for its default: resolution, then HDR,
+    then size."""
+    return sorted(files, key=lambda f: (resolution_height(f.get('resolution')), bool(f.get('hdr')),
+                                        f.get('file_size') or 0), reverse=True)
+
+
 def default_version(item, max_resolution=None):
     """The file to play of a title with several (a 1080p and a 4K copy):
     the best that fits max_resolution, else the best, in Silo's own order
@@ -375,9 +383,7 @@ def default_version(item, max_resolution=None):
     by file id, so the first was often an older 1080p copy, and Kodi then
     played 1080p on a 4K TV; the last one played (last_file_id) was that
     copy again, so it isn't followed either."""
-    versions = sorted(item.get('versions') or [],
-                      key=lambda v: (resolution_height(v.get('resolution')), bool(v.get('hdr')),
-                                     v.get('file_size') or 0), reverse=True)
+    versions = best_copies(item.get('versions') or [])
     limit = resolution_height(max_resolution)
     fitting = [v for v in versions if limit and 0 < resolution_height(v.get('resolution')) <= limit]
     return (fitting or versions or [None])[0]
