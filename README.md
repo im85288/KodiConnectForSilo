@@ -200,6 +200,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.18.3 (2026-11-12)
+- **Paused films no longer end:** while Kodi is paused it reads nothing, so the relay's connection to Silo sat
+  idle and was closed. On resume the relay's read failed, Kodi played what it had buffered and then ended the film
+  as if finished, back to Home. The relay now asks Silo for the rest from the byte it reached and carries on (up
+  to 3 reconnections in a row, and only with an answer that starts exactly there).
+
 ### v0.18.2 (2026-11-12)
 - **4K labels for titles with two copies:** 0.18.1 plays a title's best copy, but titles synced before it kept
   the label of the copy Silo listed first (often 1080p), since a sync rewrites a title only when Silo changes it.
