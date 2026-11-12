@@ -200,6 +200,13 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.17.2 (2026-11-12)
+- **Artwork port freed on update:** Kodi unregisters an add-on before stopping its service, so the service's
+  shutdown failed ("Unknown addon id") before closing the artwork relay. Kodi killed it after 5 s and the port stayed
+  taken until Kodi restarted: "Port 57578 is in use, so Silo artwork will not load". The shutdown now closes the
+  relay first and finishes inside Kodi's 5 s. The first update from 0.17.1 runs the old shutdown, so it can still
+  show the message once: restart Kodi.
+
 ### v0.17.1 (2026-11-08)
 - **Skyline's TV page:** Back from its rows and buttons goes to the TV tab, as on the other pages. Kodi's Home
   goes full screen on Back whenever something plays, and the page's preview always does.

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.17.1" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.17.2" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.17.1: for Skyline's TV page: Back goes to the TV tab, as on the other pages, not into the preview's full screen.
+    <news>0.17.2: turning the add-on off and on, or updating it, no longer leaves Silo's artwork port taken until Kodi restarts ("Port 57578 is in use"). The first update to 0.17.2 can still show it once: restart Kodi.
+
+0.17.1: for Skyline's TV page: Back goes to the TV tab, as on the other pages, not into the preview's full screen.
 
 0.17.0: Skyline's YouTube page is gone (the YouTube app does it better), with its background fetching, which had left a 2 GB SHIELD too little memory to start 4K. Skyline's TV page lists My teams last. Trailers still play through the YouTube add-on.
 
