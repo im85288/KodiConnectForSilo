@@ -20,7 +20,7 @@ import xbmcplugin
 # Kept light: Kodi starts a fresh Python for every play and widget refresh,
 # and on a 2 GB device the ~7 MB that requests costs is worth saving. Sign-in
 # code (which needs requests) is imported only when used.
-from . import channels, kodi, mapping, tracks
+from . import channels, display, kodi, mapping, tracks
 from . import rows as home_cards
 from .library import CAST_LIMIT, details_of
 from .mapping import RELAY_PORT as DEFAULT_PORT
@@ -73,6 +73,8 @@ def run(argv):
         return home_menu()
     if mode == 'signin':
         return sign_in()
+    if mode == 'display':
+        return ask_about_display()
     if mode == 'signout':
         return sign_out()
     if mode == 'profile':
@@ -190,6 +192,12 @@ def sign_in():
     if auth.sign_in(store):
         ask_service('command/signed_in', timeout=10)
         kodi.notify(kodi.string(30107) % (store.get('profile_name') or store.get('username') or ''))
+        display.ask_once(store)
+
+
+def ask_about_display():
+    """The service's once-only question for those already signed in."""
+    display.ask_once(Store(kodi.profile_dir()))
 
 
 def switch_profile():

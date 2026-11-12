@@ -17,7 +17,7 @@ import xbmc
 import xbmcgui
 
 from . import catchup, jump, kodi, kodidb, mapping, migrate, quick, tracks, upnext, keymap
-from . import channels, commands, playeraudio, playersubs, theme, tvrows
+from . import channels, commands, display, playeraudio, playersubs, theme, tvrows
 from .theme import ThemePlayer
 from .api import ApiError, SignedOut, SiloClient
 from .events import Debouncer, EventListener
@@ -43,6 +43,7 @@ COLLECTION_LIMIT = 500      # titles listed from one collection
 TRAILER_COVER_MAX = 10      # seconds the skin's trailer cover can wait for its page
 TRAILER_START_MAX = 12      # ...or for a trailer to start (none found: back to the page)
 WORKER_STOP_WAIT = 2        # seconds to let a running task end when Kodi stops the service (it kills at 5)
+DISPLAY_ASK_AFTER = 20      # seconds after start before asking what the TV shows (display.py), once Home is up
 TRAILER_QUIET = 0.75        # seconds after Kodi's busy spinner with no video: it failed
 PERSONAL_QUIET = 30          # fetch the profile's lists again once its watch state settles...
 PERSONAL_WAIT = 300          # ...or this long after the first change
@@ -289,6 +290,7 @@ class Service(object):
         self.next_sync = 0
         self.next_progress = 0
         self.signed_out_notice = False
+        self.display_checked = False  # asked (or no need to) what the TV shows: ask_about_display
         self.published_signed_in = None
         self.home_rows = []  # the profile's Silo home rows, as last published
         self.ranked = set()  # ids of Home rows drawn as a Top 10 (rows.ranked_rows)
@@ -395,6 +397,18 @@ class Service(object):
             except Exception as error:  # the next step still runs
                 kodi.log_warning('Stopping (%s): %s' % (name, error))
 
+    def ask_about_display(self, ticks):
+        """Once, for someone signed in before sign-in asked what the TV
+        shows (display.py): when Home is up with nothing playing and no
+        dialog open. The plugin asks, so the service's loop isn't held."""
+        if self.display_checked or ticks < DISPLAY_ASK_AFTER or ticks % 5:
+            return
+        if self.playing() or not xbmc.getCondVisibility('Window.IsActive(home) + !System.HasActiveModalDialog'):
+            return
+        self.display_checked = True
+        if display.needs_asking(self.store):
+            xbmc.executebuiltin('RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=display)')
+
     def tick(self, ticks):
         """The main loop's second: what's due now."""
         if ticks % 10 == 0:  # the skin may have changed
@@ -423,6 +437,7 @@ class Service(object):
             self.stop_listener()
             return
         self.start_listener()
+        self.ask_about_display(ticks)
         now = time.time()
         if now >= self.next_sync:
             self.next_sync = now + 60 * max(5, kodi.setting_int('sync_interval') or 60)

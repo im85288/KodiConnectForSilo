@@ -522,3 +522,6 @@ msgctxt "#30233"
 msgid "No Live TV playlist to read groups from"
 msgstr ""
 
+msgctxt "#30234"
+msgid "Saved. To change them later: the add-on's settings, Playback."
+msgstr ""

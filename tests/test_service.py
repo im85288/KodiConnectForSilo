@@ -19,6 +19,7 @@ def bare_service(**attrs):
     service.task_number = iter(range(10 ** 6))
     service.queued, service.queued_lock = set(), threading.Lock()
     service.tick_error = ('', 0)
+    service.display_checked = True
     service.__dict__.update(attrs)
     return service
 
