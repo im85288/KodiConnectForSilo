@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.17.2" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.18.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.17.2: turning the add-on off and on, or updating it, no longer leaves Silo's artwork port taken until Kodi restarts ("Port 57578 is in use"). The first update to 0.17.2 can still show it once: restart Kodi.
+    <news>0.18.0: asks once what your TV shows (highest resolution and HDR), starting on what Kodi detects. Until set, Silo sends 1080p SDR; its own quality setting doesn't apply to Kodi. Change it later in the add-on's settings, Playback.
+
+0.17.2: turning the add-on off and on, or updating it, no longer leaves Silo's artwork port taken until Kodi restarts ("Port 57578 is in use"). The first update to 0.17.2 can still show it once: restart Kodi.
 
 0.17.1: for Skyline's TV page: Back goes to the TV tab, as on the other pages, not into the preview's full screen.
 
@@ -45,10 +47,6 @@
 
 0.14.2: for Skyline's TV guide: Back returns to what's playing, and Back twice leaves Live TV.
 
-0.14.1: plays the audio track Silo picks for your profile, so a file with another language first (a MULTi release) plays in your language.
-
-0.14.0: for Skyline: a person's titles not on your server, to request (needs TMDb Helper), and the remote's Play/Pause plays a title's card from any row. A session left open when Kodi closes or crashes during playback is ended on Silo at the next start.
-
-0.13.1: restores films that had lost their library row to another film, and stops that happening. Kodi now says when syncs keep failing.</news>
+0.14.1: plays the audio track Silo picks for your profile, so a file with another language first (a MULTi release) plays in your language.</news>
   </extension>
 </addon>

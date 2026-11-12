@@ -200,6 +200,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.18.0 (2026-11-12)
+- **Asks what the TV shows:** the Playback settings (highest resolution and HDR) default to 1080p SDR, so a 4K TV
+  got 1080p until someone found them; changing Silo's own quality setting doesn't reach Kodi. The add-on now asks
+  once, after sign-in, or on Home for someone already signed in who never changed them, starting on what Kodi
+  reports (`System.SupportedHDRTypes`, `System.ScreenHeight`). Dolby Vision profile 7 is never preselected.
+
 ### v0.17.2 (2026-11-12)
 - **Artwork port freed on update:** Kodi unregisters an add-on before stopping its service, so the service's
   shutdown failed ("Unknown addon id") before closing the artwork relay. Kodi killed it after 5 s and the port stayed
