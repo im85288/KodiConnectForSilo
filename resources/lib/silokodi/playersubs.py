@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """Subtitles in the player: Search online's chosen subtitle put on after
-its restart, and a show's remembered choice (subtitleprefs) applied when an
-episode starts and saved when the viewer changes it. Functions of the
+its restart, and the subtitle Silo picks (subtitleprefs: a show's remembered
+choice, else the profile's rules, forced subtitles among them) put on when a
+title starts; a show's choice saved when the viewer changes it. Functions of the
 service (its client, its playback sessions)."""
 import threading
 import time
@@ -49,22 +50,45 @@ def apply_pick(service, player, session):
     thread.start()
     return True
 
+def player_audio_language():
+    """The language of the audio track Kodi plays ('' when unknown)."""
+    answer = kodi.jsonrpc('Player.GetProperties', playerid=1, properties=['currentaudiostream']) or {}
+    return (answer.get('currentaudiostream') or {}).get('language') or ''
+
+
 def player_subtitles():
     """(enabled, the current track, every track) from Kodi's video player."""
     answer = kodi.jsonrpc('Player.GetProperties', playerid=1,
                           properties=['subtitles', 'currentsubtitle', 'subtitleenabled']) or {}
     return bool(answer.get('subtitleenabled')), answer.get('currentsubtitle') or {}, answer.get('subtitles') or []
 
+def target_for(pref, rule, tracks, audio_language):
+    """What to put on as a title starts: the show's remembered choice first
+    ('off' or a track); with none (or none that fits this episode) the
+    profile's rules, which only ever put a track on. Remembered 'off' still
+    shows the audio's forced track, as Silo's apps do."""
+    target = subtitleprefs.pick(pref, tracks)
+    if target == 'off':
+        forced = subtitleprefs.profile_pick(dict(rule or {}, mode='off'), tracks, audio_language)
+        return 'off' if forced is None else forced
+    if target is not None:
+        return target
+    return subtitleprefs.profile_pick(rule, tracks, audio_language)
+
+
 def apply_pref(service, session):
-    """An episode starts: its show's remembered subtitle choice, from Silo,
-    once Kodi has added the session's sidecar tracks."""
-    if not session.series_id:
+    """A title starts: the subtitle Silo would pick (target_for), once Kodi
+    has added the session's sidecar tracks."""
+    if not session.series_id and not session.subtitle_rules:
         return
+
     def apply():
-        try:
-            pref = service.client.get('/subtitle-prefs/%s' % session.series_id)
-        except (ApiError, requests.RequestException):
-            pref = None  # none stored (404), or Silo unreachable: Kodi's own default stands
+        pref = None
+        if session.series_id:
+            try:
+                pref = service.client.get('/subtitle-prefs/%s' % session.series_id)
+            except (ApiError, requests.RequestException):
+                pref = None  # none stored (404), or Silo unreachable: the profile's rules
         tracks, count = [], -1
         for _ in range(10):  # until the sidecars are in (their count stops changing)
             time.sleep(0.5)
@@ -72,18 +96,19 @@ def apply_pref(service, session):
             if len(tracks) == count:
                 break
             count = len(tracks)
-        target = subtitleprefs.pick(pref, tracks)
+        target = target_for(pref, session.subtitle_rules, tracks, player_audio_language())
         if target == 'off':
             kodi.jsonrpc('Player.SetSubtitle', playerid=1, subtitle='off')
-        elif target is not None:
+        elif target is not None and not (enabled and current.get('index') == target):
             kodi.jsonrpc('Player.SetSubtitle', playerid=1, subtitle=target, enable=True)
         enabled, current, _ = player_subtitles()
         session.subtitle_state = (enabled, current.get('index'))
         if target is not None:
-            kodi.log('Subtitles for %s as remembered for its show: %s' % (session.content_id, target))
+            kodi.log('Subtitles for %s as Silo picks them: %s' % (session.content_id, target))
     thread = threading.Thread(target=apply, name='silokodi-subtitle-pref')
     thread.daemon = True
     thread.start()
+
 
 def save_choice(service, session):
     """Each second while an episode plays: a subtitle change the viewer

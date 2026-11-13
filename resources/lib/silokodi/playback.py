@@ -13,7 +13,7 @@ import threading
 import time
 import uuid
 
-from . import mapping, upnext
+from . import mapping, subtitleprefs, upnext
 from .api import ApiError
 
 PROTOCOL = 3
@@ -112,6 +112,7 @@ class Session(object):
         self.subtitles = []
         self.series_id = None
         self.subtitle_state = None  # (enabled, track index) as last applied or saved
+        self.subtitle_rules = None  # Silo's subtitle mode, language and forced switch (subtitleprefs.rules)
         # The audio track Silo picks for the profile (playeraudio): an ordinal
         # into the file's audio tracks, for direct play only.
         self.audio_track = None
@@ -168,7 +169,7 @@ class PlaybackManager(object):
         end the ones Kodi was killed or crashed holding (close_leftovers)."""
         self.client = client
         self.ledger = ledger
-        self.media_url = media_url or (lambda url: url)
+        self.media_url = media_url or (lambda url, name=None: url)
         self.version = version
         self.settings = settings
         self.log = log or (lambda message: None)
@@ -244,6 +245,8 @@ class PlaybackManager(object):
         session = Session(self.client, body['installation_id'], session_id, content_id, plan)
         # An episode's series: its remembered subtitle choice (subtitleprefs).
         session.series_id = item.get('series_id') if item.get('type') == 'episode' else None
+        # The profile's subtitle rules as Silo resolves them for this title (library overrides included).
+        session.subtitle_rules = subtitleprefs.rules(item)
         # Intro, recap and credits ranges, for Up Next's Skip button and popup.
         played = self._played_version(item, plan, version)
         session.markers = upnext.markers(played, item)
@@ -260,9 +263,11 @@ class PlaybackManager(object):
             self._remember()
         timeline = plan.get('timeline') or {}
         # Text sidecars: the file's own and ones downloaded through Silo (its apps' or this add-on's).
-        subtitles = [self.media_url(self.client.url(entry['url'])) for entry in (plan.get('subtitle') or {}).get('inventory') or []
+        # Each is named for Kodi (subtitleprefs.sidecar_name): a bare link has no language or forced flag.
+        subtitles = [self.media_url(self.client.url(entry['url']), subtitleprefs.sidecar_name(entry))
+                     for entry in (plan.get('subtitle') or {}).get('inventory') or []
                      if entry.get('source') in ('external', 'downloaded') and entry.get('url')
-                     and entry.get('codec') in ('srt', 'subrip', 'vtt', 'webvtt', 'ass', 'ssa')]
+                     and entry.get('codec') in subtitleprefs.SIDECAR_EXTENSIONS]
         session.subtitles = subtitles  # in the order Kodi adds them, after the file's own tracks
         self.log('Playing %s as %s' % (content_id, plan.get('delivery')))
         return {

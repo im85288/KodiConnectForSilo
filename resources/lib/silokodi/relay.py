@@ -12,6 +12,9 @@
                            adds a fresh token to every request, so a long film
                            outlives the hourly token and no token reaches
                            Kodi's log. Only sessions this add-on started pass.
+                           A path may end in /~/<file name>, which the relay
+                           drops: a subtitle sidecar's name, from which Kodi
+                           reads its language and forced flag.
 
 It listens on 127.0.0.1 only and never logs URLs, which carry signatures.
 """
@@ -26,7 +29,7 @@ import time
 try:
     from http.server import BaseHTTPRequestHandler, HTTPServer
     from socketserver import ThreadingMixIn
-    from urllib.parse import parse_qs, unquote, urlsplit
+    from urllib.parse import parse_qs, quote, unquote, urlsplit
 except ImportError:  # pragma: no cover
     raise
 
@@ -36,6 +39,7 @@ from urllib3.exceptions import HTTPError as Urllib3Error
 from . import quickstart
 from .mapping import RELAY_PORT as DEFAULT_PORT
 CHUNK = 64 * 1024
+NAME_MARK = '/~/'  # ends a media path with a name Kodi reads (a sidecar's language and flags)
 MEDIA_CHUNK = 1024 * 1024
 STATS_EVERY = 30
 # Reconnections to Silo in a row, for one request of Kodi's, before giving up.
@@ -124,7 +128,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
     def media(self, relay, parts, head):
-        path = parts.path[len('/media'):]
+        path = parts.path[len('/media'):].split(NAME_MARK)[0]
         if not relay.media_allowed(path):
             self.send_error(403)
             return
@@ -316,13 +320,15 @@ class Relay(object):
 
     # ----- media -----
 
-    def media_url(self, url):
-        """Kodi's address for a Silo media URL on the API origin; others pass through."""
+    def media_url(self, url, name=None):
+        """Kodi's address for a Silo media URL on the API origin; others pass
+        through. A name (a sidecar's file name, as Kodi parses it) ends the path."""
         server = urlsplit(self.client.server_url)
         target = urlsplit(url)
         if (target.scheme, target.netloc) != (server.scheme, server.netloc):
             return url
-        return 'http://127.0.0.1:%d/media%s%s' % (self.port, target.path, '?' + target.query if target.query else '')
+        return 'http://127.0.0.1:%d/media%s%s%s' % (self.port, target.path, NAME_MARK + quote(name) if name else '',
+                                                    '?' + target.query if target.query else '')
 
     def reopen_media(self, path, query, headers, broken, sent):
         """The rest of a media body that broke after `sent` bytes: the same

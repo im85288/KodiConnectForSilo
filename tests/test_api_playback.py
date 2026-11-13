@@ -136,7 +136,8 @@ def plan(delivery='original_http', url='/api/v2/stream/s1?st=signed', **timeline
                               'stream': {'url': url, 'mime_type': 'video/x-matroska', 'headers': {}},
                               'timeline': dict({'stream_origin_seconds': 0, 'player_start_seconds': 0}, **timeline),
                               'subtitle': {'inventory': [
-                                  {'source': 'external', 'codec': 'srt', 'url': '/api/v2/stream/s1/subtitles/0.srt?st=x'},
+                                  {'source': 'external', 'codec': 'srt', 'language': 'en', 'forced': True,
+                                   'url': '/api/v2/stream/s1/subtitles/0.srt?st=x'},
                                   {'source': 'embedded', 'codec': 'pgs', 'url': '/api/v2/stream/s1/subtitles/1.sup'},
                                   {'source': 'downloaded', 'codec': 'srt',
                                    'url': '/api/v2/stream/s1/subtitles/2.srt?downloaded_subtitle_id=9'}]}}}
@@ -173,6 +174,18 @@ def test_start_builds_a_v3_request_and_returns_a_signed_url(store):
                                    'https://silo.test/api/v2/stream/s1/subtitles/2.srt?downloaded_subtitle_id=9']
     assert answer['hls'] is False and answer['start_offset'] == 0
     assert 'Authorization' not in json.dumps(answer)
+
+
+def test_sidecars_are_named_for_kodi(store):
+    named = []
+    client = client_with(store, [('GET', '/api/v2/catalog/items/movie-1', Response(200, movie())),
+                                 ('GET', '/api/v2/playback/capabilities', Response(200, CAPABILITY)),
+                                 ('POST', '/api/v2/playback/start', Response(201, plan()))])
+    mgr = playback.PlaybackManager(client, '0.1.0', lambda: {'max_resolution': '2160p'},
+                                   media_url=lambda url, name=None: named.append(name) or url)
+    mgr.start('movie-1')
+    assert named == ['Silo.en.forced.srt', 'Silo.srt', None]
+    assert mgr.pending.subtitle_rules == {'mode': 'auto', 'language': None, 'forced': True}
 
 
 TWO_COPIES = [{'file_id': '7', 'resolution': '1080p', 'hdr': False, 'file_size': 9},

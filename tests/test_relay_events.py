@@ -199,6 +199,11 @@ def test_media_is_relayed_with_ranges_and_stats(tmp_path):
             assert response.status == 206
             assert response.headers['Content-Range'] == 'bytes 1000-1999/%d' % len(payload)
             assert response.read() == payload[1000:2000]
+        # A sidecar's name for Kodi ends the path; the relay drops it.
+        named = server.media_url(LocalClient.server_url + '/api/v2/stream/sess-1?st=signed', 'Silo.en.forced.srt')
+        assert named == 'http://127.0.0.1:%d/media/api/v2/stream/sess-1/~/Silo.en.forced.srt?st=signed' % server.port
+        with urlopen(named, timeout=10) as response:
+            assert response.read() == payload
         with pytest.raises(Exception) as refused:
             urlopen('http://127.0.0.1:%d/media/api/v2/stream/other' % server.port, timeout=5)
         assert '403' in str(refused.value)
