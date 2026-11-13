@@ -7,6 +7,8 @@ scope a skin names (mode=shuffle&scope=...&id=...).
     tvshow   a random episode of one show (id: its library id), unwatched
              first: for the sitcoms one dips into
     set      a random film of a box set (id: the movie set), unwatched first
+    collection  a random title of a Silo collection (id: library:collection),
+             unwatched first; a show plays its next episode (from_titles)
 
 Kodi plays what's chosen as any library item, through the add-on's own
 play route, so a Silo session, resume and Up Next work as usual.
@@ -29,6 +31,35 @@ def next_episode(episodes):
     """A show's next episode: the first unwatched in order, specials aside."""
     ordered = sorted((e for e in episodes if e.get('season')), key=lambda e: (e['season'], e['episode']))
     return next((e for e in ordered if not e.get('playcount')), None)
+
+
+def from_titles(titles, rand=random):
+    """A pick from a collection's titles ([{'type', 'kodi_id'}], as the
+    service lists them): an unwatched film or a show with episodes left
+    first, as {'movieid': n} or {'episodeid': n}; None if nothing plays."""
+    films = dict((f['movieid'], f) for f in (kodi.jsonrpc('VideoLibrary.GetMovies', properties=FIELDS)
+                                             or {}).get('movies') or [])
+    shows = dict((s['tvshowid'], s) for s in (kodi.jsonrpc('VideoLibrary.GetTVShows',
+                                                           properties=['episode', 'watchedepisodes'])
+                                              or {}).get('tvshows') or [])
+    candidates = []
+    for title in titles:
+        if title.get('type') == 'movie' and title.get('kodi_id') in films:
+            candidates.append({'kind': 'movie', 'id': title['kodi_id'],
+                               'playcount': films[title['kodi_id']].get('playcount')})
+        elif title.get('type') == 'tvshow' and title.get('kodi_id') in shows:
+            show = shows[title['kodi_id']]
+            left = (show.get('episode') or 0) > (show.get('watchedepisodes') or 0)
+            candidates.append({'kind': 'tvshow', 'id': title['kodi_id'], 'playcount': 0 if left else 1})
+    chosen = pick(candidates, rand)
+    if not chosen:
+        return None
+    if chosen['kind'] == 'movie':
+        return {'movieid': chosen['id']}
+    episodes = (kodi.jsonrpc('VideoLibrary.GetEpisodes', tvshowid=chosen['id'],
+                             properties=FIELDS + ['season', 'episode']) or {}).get('episodes') or []
+    episode = next_episode(episodes) or pick([e for e in episodes if e.get('season')], rand)
+    return {'episodeid': episode['episodeid']} if episode else None
 
 
 def choose(scope, item_id=None, rand=random):

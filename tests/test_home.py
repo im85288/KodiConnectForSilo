@@ -131,6 +131,49 @@ def test_the_plugin_puts_the_marks_on_a_lazy_rows_cards(monkeypatch):
     assert not any(key in second for key in ('silo.dismiss', 'silo.left', 'silo.rank', 'silo.place'))
 
 
+def test_a_collection_card_carries_its_lasting_backdrop(monkeypatch):
+    # Skyline's hero behind the card: the relay's lasting address, not a signed link.
+    answer = {'collections': [{'id': '9', 'library': '1', 'title': 'Bond', 'poster': '', 'count': 2,
+                               'backdrop': 'https://silo.test/b.webp?sig=1',
+                               'hero': 'http://127.0.0.1:57578/art/movie-1/fanart'}]}
+    added = []
+
+    class Card(object):
+        def __init__(self, label, offscreen=False):
+            self.art, self.properties = {}, {}
+
+        def setProperty(self, key, value):
+            self.properties[key] = value
+
+        def setArt(self, art):
+            self.art = art
+
+        def getVideoInfoTag(self):
+            return type('Tag', (), {'setPlot': lambda self, plot: None})()
+    monkeypatch.setattr(plugin, 'ask_service', lambda path, **query: answer)
+    monkeypatch.setattr(plugin.xbmcgui, 'ListItem', Card, raising=False)
+    monkeypatch.setattr(plugin.xbmcplugin, 'addDirectoryItem', lambda handle, url, item, isFolder: added.append(item),
+                        raising=False)
+    monkeypatch.setattr(plugin.xbmcplugin, 'setContent', lambda *a: None, raising=False)
+    monkeypatch.setattr(plugin.xbmcplugin, 'setProperty', lambda *a: None, raising=False)
+    plugin.run(['plugin://x/', '1', '?mode=collections&libraries=1'])
+    assert added[0].art['fanart'] == 'http://127.0.0.1:57578/art/movie-1/fanart'
+
+
+def test_shuffle_plays_from_the_collection_skyline_has_open(monkeypatch):
+    asked, played = [], []
+    folder = 'plugin://plugin.video.kodiconnectforsilo/?mode=widget&section=collection&library=1&collection=9&title=Bond'
+    monkeypatch.setattr(plugin.xbmc, 'getInfoLabel', lambda label: folder if 'list.collection' in label else '')
+    monkeypatch.setattr(plugin, 'ask_service', lambda path, **query: asked.append(query) or {'items': [
+        {'type': 'movie', 'kodi_id': 4}]})
+    from resources.lib.silokodi import shuffle
+    monkeypatch.setattr(shuffle, 'from_titles', lambda titles: {'movieid': titles[0]['kodi_id']})
+    monkeypatch.setattr(plugin.kodi, 'jsonrpc', lambda method, **params: played.append((method, params)))
+    plugin.run(['plugin://x/', '1', '?mode=shuffle&scope=collection'])
+    assert asked == [{'timeout': 20, 'section': 'collection', 'library': '1', 'collection': '9'}]
+    assert played == [('Player.Open', {'item': {'movieid': 4}, 'options': {'resume': False}})]
+
+
 def test_the_plugin_sends_the_relays_token(monkeypatch):
     asked = []
     monkeypatch.setattr(plugin.kodi, 'get_property', lambda key: 'secret' if key == 'relay_token' else '')

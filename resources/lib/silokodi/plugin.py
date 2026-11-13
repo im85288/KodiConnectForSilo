@@ -628,8 +628,10 @@ def collections(base, handle, library_ids, top=0):
         # A property, not label2: Kodi overwrites a folder's label2 with sort details.
         item.setProperty('silo.count', str(card.get('count') or ''))
         art = {'poster': card['poster'], 'thumb': card['poster']} if card.get('poster') else {}
-        if card.get('backdrop'):
-            art['fanart'] = card['backdrop']  # its first title's: a skin's hero behind the card
+        if card.get('hero') or card.get('backdrop'):
+            # Its first title's backdrop, at the relay's lasting address when
+            # known: a skin's hero behind the card and on the collection's page.
+            art['fanart'] = card.get('hero') or card['backdrop']
         item.setArt(art)
         # Its first titles' posters, for a Silo-style skin's fanned card.
         for number, url in enumerate(card.get('fan') or [], 1):
@@ -856,7 +858,19 @@ def play_item(kind, dbid):
 def shuffle_play(scope, item_id):
     """Shuffle (shuffle.py): play a random title from the scope a skin names."""
     from . import shuffle
-    chosen = shuffle.choose(scope, item_id)
+    if scope == 'collection':
+        # A Silo collection's titles come from the service. id: library:collection,
+        # else the collection Skyline has open (the folder in silo.browse.list.collection).
+        library, _, collection = (item_id or '').partition(':')
+        if not item_id:
+            opened = xbmc.getInfoLabel('Window(Home).Property(silo.browse.list.collection)')
+            folder = dict(parse_qsl(opened.split('?', 1)[1])) if '?' in opened else {}
+            library, collection = folder.get('library') or '', folder.get('collection') or ''
+        answer = ask_service('command/widget', timeout=20, section='collection', library=library,
+                             collection=collection)
+        chosen = shuffle.from_titles(answer.get('items') or [])
+    else:
+        chosen = shuffle.choose(scope, item_id)
     if not chosen:
         return kodi.notify(kodi.string(30211))
     xbmc.executebuiltin('Dialog.Close(all,true)')

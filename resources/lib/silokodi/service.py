@@ -965,24 +965,28 @@ class Service(object):
                 # Silo signs the poster link but gives it relative to the server.
                 if card['poster'].startswith('/'):
                     card['poster'] = self.client.server_url.rstrip('/') + card['poster']
-                card['fan'], card['backdrop'] = self.collection_fan(library_id, card['id'])
+                card['fan'], card['backdrop'], card['hero'] = self.collection_fan(library_id, card['id'])
                 cards.append(card)
         return cards
 
     def collection_fan(self, library_id, collection_id):
         """A collection's first three posters, for a Silo-style skin's fanned
         collection card, and its first title's backdrop (about 10 ms a
-        collection)."""
+        collection): Silo's signed link, and the relay's lasting one for the
+        collection page's hero, whose folder link Kodi may keep for days (a
+        collection added to Home)."""
         server = self.client.server_url.rstrip('/')
         try:
             items = self.client.get('/library/%s/collections/%s/items' % (library_id, collection_id),
                                     limit=3).get('items') or []
         except (ApiError, requests.RequestException):
-            return [], ''
+            return [], '', ''
         absolute = lambda url: server + url if url.startswith('/') else url
         posters = [absolute(url) for url in (item.get('poster_url') or '' for item in items[:3]) if url]
-        backdrop = next((absolute(item['backdrop_url']) for item in items if item.get('backdrop_url')), '')
-        return posters, backdrop
+        first = next((item for item in items if item.get('backdrop_url')), None)
+        if not first:
+            return posters, '', ''
+        return posters, absolute(first['backdrop_url']), mapping.art_url(self.port, first['content_id'], 'fanart')
 
     def collection_items(self, library_id, collection_id):
         """A library collection's titles as Kodi library ids, in Silo's order."""
