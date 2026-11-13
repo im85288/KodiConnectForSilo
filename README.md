@@ -200,6 +200,15 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.20.0 (2026-11-13)
+- **Subtitles as Silo picks them:** when a title starts, the add-on puts on the subtitle Silo's apps would, from
+  the profile's settings as the title resolves them (subtitle language, Auto/Always/Off, show forced subtitles,
+  library overrides included). Auto with English audio shows the English forced track, for films such as Argo
+  with foreign-language scenes. A show's remembered choice still comes first, and the add-on only ever puts a
+  track on: when Silo's settings call for none, Kodi's own choice stands.
+- **Named subtitle files:** Silo's subtitle files reach Kodi with their language and forced flag in their name
+  (English.en.forced.srt), so Kodi lists them by language and can pick them.
+
 ### v0.19.0 (2026-11-13)
 - **Shuffle a collection:** `mode=shuffle&scope=collection` plays a random title of a Silo collection, unwatched
   first (a show at its next episode), for the Shuffle on Skyline's collection page. With no id it uses the
