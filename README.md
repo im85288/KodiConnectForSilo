@@ -200,6 +200,13 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.19.0 (2026-11-13)
+- **Shuffle a collection:** `mode=shuffle&scope=collection` plays a random title of a Silo collection, unwatched
+  first (a show at its next episode), for the Shuffle on Skyline's collection page. With no id it uses the
+  collection Skyline has open.
+- **Collection backdrops that last:** a collection card's backdrop is the relay's address for its first title's
+  picture, not Silo's signed link, which stopped working after a day on a collection added to Home.
+
 ### v0.18.3 (2026-11-12)
 - **Paused films no longer end:** while Kodi is paused it reads nothing, so the relay's connection to Silo sat
   idle and was closed. On resume the relay's read failed, Kodi played what it had buffered and then ended the film
