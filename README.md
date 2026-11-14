@@ -200,6 +200,16 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.21.4 (2026-11-14)
+- **Settings that stick:** Kodi's add-on settings screen saves its own copy of the settings when it closes, over
+  anything saved while it was open. Sign-in (started from that screen) asked what the TV shows and saved the
+  answers, which then came back as 1080p and SDR. Actions on the screen (Choose libraries, Top 10 rows, the
+  display question) now close it first, so Kodi rereads the settings, save, and open it again; sign-in leaves the
+  display question for Home.
+- **Slow rows explained:** a row taking over a second logs `Row …: N items, Silo x s, library details y s (n asked
+  of Kodi)`, to see on very large libraries (89,000 films, a million episodes) whether Silo or Kodi's library is
+  slow.
+
 ### v0.21.3 (2026-11-14)
 - **Dolby Vision profile:** badges and the info page's Version line name the profile as Dolby writes it, with
   its base layer's compatibility: `DOLBY VISION 7.6` (UHD Blu-ray), `8.1` (HDR10-compatible), `5`. Films get it
