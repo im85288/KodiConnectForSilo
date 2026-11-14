@@ -260,7 +260,6 @@ class Service(object):
         self.store = Store(kodi.profile_dir())
         self.client = SiloClient(self.store, self.version, xbmc.getInfoLabel('System.FriendlyName'))
         self.db = SyncDB(kodi.profile_dir())
-        self.use_art_widths(xbmcgui.getScreenWidth())
         self.port = kodi.setting_int('relay_port') or DEFAULT_PORT
         self.syncer = Syncer(self.client, self.db, self.open_kodi, self.port, log=kodi.log,
                              should_stop=self.monitor.abortRequested, progress=self.sync_progress,
@@ -284,10 +283,12 @@ class Service(object):
         self.queued = set()  # tasks waiting in self.tasks: each waits there once
         self.queued_lock = threading.Lock()
         self.tick_error = ('', 0)  # the main loop's last error, and when it was logged
+        self.use_art_widths(xbmcgui.getScreenWidth())
         self.listener = None
         self.recently_played = {}
         self.subtitle_pick = None  # (stored subtitle id, position) to apply when Search online's restart starts
         self.art_attempts = {}
+        self.art_locks, self.art_locks_lock = {}, threading.Lock()  # one refresh per item at a time
         self.progress_dialog = None
         self.next_sync = 0
         self.next_progress = 0
@@ -629,6 +630,8 @@ class Service(object):
                 self.syncer.sync_library(library)
         elif kind == 'state':
             self.syncer.refresh_state(task[1])
+        elif kind == 'dropart':
+            self.drop_cached_art('New picture sizes')
         elif kind == 'reset':
             for library_id in self.db.libraries():
                 self.syncer.remove_library(library_id)
@@ -1563,17 +1566,30 @@ class Service(object):
     def use_art_widths(self, gui_width):
         """Picture sizes for the menus' resolution. When they change (4K
         menus on or off), the stored links are dropped so each picture is asked
-        for again at its new size as Kodi next shows it. Home-row cards keep
-        theirs: one can't be asked for alone (refresh_art only schedules the
-        rows), so Kodi would get a 404 and leave it blank; publishing the rows
-        brings them at the new size."""
+        for again at its new size as Kodi next shows it, and Silo's pictures
+        leave Kodi's own cache (a queued task: one JSON-RPC call per picture),
+        which would otherwise keep showing the old size. Home-row cards keep
+        their links: one can't be asked for alone (refresh_art only schedules
+        the rows), so Kodi would get a 404 and leave it blank; publishing the
+        rows brings them at the new size."""
         self.client.art_widths = api.art_widths_for(gui_width)
         if self.db.meta('art_widths', {}) != self.client.art_widths:
             self.db.clear_art(keep_prefix='row:')
+            self.enqueue('dropart')
             self.db.set_meta('art_widths', self.client.art_widths)
             kodi.log('Artwork sizes for %d-wide menus: %s' % (gui_width or 0, self.client.art_widths or 'large'))
 
     def refresh_art(self, content_id):
+        """Silo's current artwork links for an item, for the relay. Kodi asks
+        for an item's poster, background and logo at once: the others wait for
+        the refresh in progress (then find its links) rather than being turned
+        away as tried recently, which Kodi showed as a blank picture."""
+        with self.art_locks_lock:
+            lock = self.art_locks.setdefault(content_id, threading.Lock())
+        with lock:
+            self._refresh_art(content_id)
+
+    def _refresh_art(self, content_id):
         if time.time() - self.art_attempts.get(content_id, 0) < ART_RETRY:
             return
         self.art_attempts[content_id] = time.time()

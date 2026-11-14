@@ -14,6 +14,7 @@ from . import kodi
 
 SLIDE = 12  # seconds a title stays
 FADE = 1500  # ms of cross-fade between titles
+PRELOAD = 3  # seconds a backdrop loads, unseen beneath the top layer, before that fades out
 BATCH = 60  # titles fetched at a time, at random
 W, H = 1920, 1080
 
@@ -58,15 +59,20 @@ class Screensaver(xbmcgui.WindowDialog):
         self.ended = True
         self.close()
 
-    def show_title(self, title):
+    def show_title(self, title, wait=lambda seconds: False):
         """The next backdrop, never through a see-through moment: on the top
         layer it fades in over the bottom one; on the bottom layer (already
-        showing, covered by the top) it's revealed as the top fades out."""
+        showing, covered by the top) it loads unseen for PRELOAD seconds and
+        is then revealed as the top fades out. Revealed at once, a backdrop
+        still loading (a 4K original is ~2 MB) left the bottom layer empty
+        and Kodi's home showed through. wait(seconds) is True to stop."""
         bottom, top = self.layers
         self.top_shown = not getattr(self, 'top_shown', False)
         if not self.top_shown:
             bottom.setImage(title['fanart'], False)
             bottom.setVisible(True)
+            if wait(PRELOAD):
+                return
             top.setVisible(False)
         else:
             top.setImage(title['fanart'], False)
@@ -93,18 +99,20 @@ def run():
         state['running'] = False
     monitor = Monitor(end)
     window.show()
+    def pause(seconds, monitor=monitor, window=window):
+        """Wait; True when the screensaver should end."""
+        for _ in range(int(seconds * 4)):
+            if monitor.waitForAbort(0.25) or not state['running'] or window.ended:
+                return True
+        return False
     queue = []
     while state['running'] and not window.ended and not monitor.abortRequested():
         if not queue:
             queue = titles()
             if not queue:
                 break  # no artwork (not signed in, or nothing synced): Kodi's black screen
-        window.show_title(queue.pop())
-        for _ in range(SLIDE * 4):
-            if monitor.waitForAbort(0.25) or not state['running'] or window.ended:
-                break
-        else:
-            continue
-        break
+        window.show_title(queue.pop(), pause)
+        if pause(SLIDE):
+            break
     window.close()
-    del window, monitor
+    del window, monitor, pause  # pause holds them too: Kodi frees the window only when all are gone
