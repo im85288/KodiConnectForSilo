@@ -117,6 +117,15 @@ def fingerprint(card):
     return _hash(card, [key for key in CARD_FIELDS if key in card])
 
 
+def details_fingerprint(card):
+    """What a skin's rows show of a title apart from its pictures: the card's
+    fields (CARD_FIELDS) without the artwork links, and its play state. An
+    update that leaves it alone changed only pictures, which Kodi refreshes
+    without reloading any row (the add-on's art addresses don't change)."""
+    keys = [key for key in CARD_FIELDS if key in card and not key.endswith(URL_FIELDS_SUFFIX)]
+    return _hash(dict(card, _play_state=list(play_state(card))), keys + ['_play_state'])
+
+
 def legacy_fingerprint(card):
     """The earlier fingerprint: every field but the viewing state. A
     row saved with it is unchanged if it matches today's card, so the sync

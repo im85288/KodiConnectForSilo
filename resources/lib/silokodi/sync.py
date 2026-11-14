@@ -17,6 +17,9 @@ from concurrent.futures import ThreadPoolExecutor
 from . import mapping
 from .api import ApiError, SignedOut
 
+# meta key prefix: a title's details_fingerprint as last written by resync_item (quiet_unless_shown_changed)
+DETAILS_KEY = 'details:'
+
 MOVIE_LIBRARY_TYPES = ('movies', 'mixed')
 SHOW_LIBRARY_TYPES = ('series', 'tv', 'tvshows', 'mixed')
 # Titles, and seasons, written per transaction: each commit to Kodi's
@@ -892,6 +895,20 @@ class Syncer(object):
 
     # ----- single items, from realtime events -----
 
+    @contextmanager
+    def quiet_unless_shown_changed(self, key, signature):
+        """Write as usual, but leave the library marked unchanged when what the
+        rows show (signature: details_fingerprint) is as last written and no
+        title came or went: only pictures changed. Then no row reloads (each
+        is a Python run, and a burst of new backgrounds reloaded every row
+        every few seconds); Kodi drops its cached pictures (art_changed)."""
+        changed, structural = self.changed, self.added_or_removed
+        previous = self.db.meta(DETAILS_KEY + key)
+        yield
+        self.db.set_meta(DETAILS_KEY + key, signature)
+        if previous == signature and self.added_or_removed == structural:
+            self.changed = changed
+
     def resync_item(self, content_id, library_id=None):
         """Rewrite one title after Silo reports it changed."""
         try:
@@ -907,25 +924,36 @@ class Syncer(object):
         if kind == 'movie':
             library = self.library_by_id(library_id or row.get('library_id'))
             if library:
-                with self.writing() as kodi:
-                    self.write_movie(kodi, item, library)
+                with self.quiet_unless_shown_changed(content_id, mapping.details_fingerprint(item)):
+                    with self.writing() as kodi:
+                        self.write_movie(kodi, item, library)
         elif kind == 'series':
             library = self.library_by_id(library_id or row.get('library_id'))
             if library:
                 seasons = self.client.seasons(content_id)
-                with self.writing() as kodi:
-                    self.write_show(kodi, item, seasons, library)
-                for season in seasons:
-                    if season.get('season_number') is not None:
-                        self.resync_season(content_id, season['season_number'])
+                numbers = [s['season_number'] for s in seasons if s.get('season_number') is not None]
+                episodes = dict((number, self.client.season_episodes(content_id, number)) for number in numbers)
+                signature = json.dumps([mapping.details_fingerprint(item), numbers] + [
+                    [mapping.details_fingerprint(e) for e in episodes[number]] for number in numbers])
+                with self.quiet_unless_shown_changed(content_id, signature):
+                    with self.writing() as kodi:
+                        self.write_show(kodi, item, seasons, library)
+                    for number in numbers:
+                        self.resync_season(content_id, number, episodes[number])
         elif kind == 'episode' and item.get('series_id'):
             if not self.db.get(item['series_id']):
                 self.resync_item(item['series_id'], library_id)
             else:
                 self.resync_season(item['series_id'], item.get('season_number'))
 
-    def resync_season(self, series_id, season_number):
-        episodes = self.client.season_episodes(series_id, season_number)
+    def resync_season(self, series_id, season_number, episodes=None):
+        if episodes is None:
+            episodes = self.client.season_episodes(series_id, season_number)
+            key = '%s:season:%s' % (series_id, season_number)
+            with self.quiet_unless_shown_changed(key, json.dumps([mapping.details_fingerprint(e) for e in episodes])):
+                with self.writing() as kodi:
+                    self.write_episodes(kodi, series_id, season_number, episodes)
+            return
         with self.writing() as kodi:
             self.write_episodes(kodi, series_id, season_number, episodes)
 

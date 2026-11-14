@@ -257,6 +257,32 @@ def test_resync_item_from_event(syncer, silo, query):
     assert query("SELECT COUNT(*) FROM movie WHERE c00 = 'Heat'") == [(0,)]
 
 
+def test_a_picture_only_update_reloads_no_rows(syncer, silo, query):
+    syncer.sync()
+    syncer.resync_item('movie-1', '1')  # first event: nothing recorded yet, rows reload once
+    syncer.changed = False
+    silo.movies['movie-1']['backdrop_url'] = 'https://silo.test/a/new-background.jpg?sig=1'
+    syncer.resync_item('movie-1', '1')
+    assert syncer.changed is False  # only the picture: no row reload
+    assert syncer.db.art('movie-1', 'fanart') == 'https://silo.test/a/new-background.jpg?sig=1'
+    silo.movies['movie-1']['overview'] = 'New plot'
+    syncer.resync_item('movie-1', '1')
+    assert syncer.changed is True  # what a row shows: reload
+    assert query("SELECT c01 FROM movie WHERE c00 = 'Heat'") == [('New plot',)]
+
+
+def test_a_shows_picture_only_update_reloads_no_rows_but_a_new_episode_does(syncer, silo):
+    syncer.sync()
+    syncer.resync_item('series-1', '2')
+    syncer.changed = False
+    silo.shows['series-1']['backdrop_url'] = 'https://silo.test/a/show-background.jpg'
+    syncer.resync_item('series-1', '2')
+    assert syncer.changed is False
+    silo.episodes_of[('series-1', 2)].append(episode('series-1', 2, 2))
+    syncer.resync_item('series-1', '2')
+    assert syncer.changed is True
+
+
 def test_progress_from_other_apps_sets_resume(syncer, query):
     syncer.sync()
     syncer.apply_progress([{'media_item_id': 'movie-2', 'position_seconds': 1325.5, 'duration_seconds': 7380,
