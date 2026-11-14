@@ -200,6 +200,15 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.21.0 (2026-11-14)
+- **4K artwork:** when Kodi draws its menus at 4K (as CoreELEC p3i T5 does by default), the add-on asks Silo for
+  wider pictures: backgrounds and title logos at their full size (TMDB's originals, backgrounds up to 3840 wide)
+  and posters at 1000 wide where Silo has them. Silo's usual "large" pictures (1280-wide backgrounds, 500-wide
+  logos) were stretched on 4K menus. On 1080p menus nothing changes. When the size changes, stored picture links
+  are dropped once so each picture is fetched again at its new size; home-row cards keep theirs until the rows are
+  rebuilt, since one can't be fetched alone. Kodi's own cache shrinks large pictures unless `advancedsettings.xml`
+  raises `imageres` (1440) and `fanartres` (2160); clear its Thumbnails afterwards to see the difference.
+
 ### v0.20.0 (2026-11-13)
 - **Subtitles as Silo picks them:** when a title starts, the add-on puts on the subtitle Silo's apps would, from
   the profile's settings as the title resolves them (subtitle language, Auto/Always/Off, show forced subtitles,
