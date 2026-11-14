@@ -317,3 +317,25 @@ def test_rotten_tomatoes_score_is_a_percentage_for_a_skin():
     details['ratings']['rottentomatoes'] = {'rating': 4.2}
     assert mapping.skyline_properties('movie', details)['silo.rating.rtcritic'] == '42'
     assert mapping.skyline_properties('movie', {'ratings': {}})['silo.rating.rtcritic'] == ''
+
+
+def test_a_slow_row_logs_where_its_time_went(monkeypatch):
+    import threading
+    from resources.lib.silokodi import commands, service as service_module
+    logged = []
+    monkeypatch.setattr(commands.kodi, 'log', logged.append)
+    monkeypatch.setattr(service_module.time, 'time', iter([0.0, 3.0, 3.0, 5.5]).__next__)
+
+    class Details(object):
+        def cached(self, kind, kodi_id):
+            return kodi_id == 1
+
+        def get(self, kind, kodi_id):
+            return {'details': {}}
+    service = service_module.Service.__new__(service_module.Service)
+    service.row_timing, service.details = threading.local(), Details()
+    service._widget_items = lambda section, library_id=None: [{'type': 'movie', 'kodi_id': 1},
+                                                               {'type': 'movie', 'kodi_id': 2}]
+    service.ranked, service.row_titles = set(), {}
+    commands.handle(service, 'widget', {'section': '42', 'library': '1'})
+    assert logged[0] == 'Row 42: 2 items, Silo 3.00 s, library details 2.50 s (1 asked of Kodi)'

@@ -192,7 +192,10 @@ def sign_in():
     if auth.sign_in(store):
         ask_service('command/signed_in', timeout=10)
         kodi.notify(kodi.string(30107) % (store.get('profile_name') or store.get('username') or ''))
-        display.ask_once(store)
+        # From the settings screen (its Sign in button), the answers would be lost
+        # when it closes (kodi.save_settings): the service asks on Home instead.
+        if not kodi.settings_open():
+            display.ask_once(store)
 
 
 def ask_about_display():
@@ -253,7 +256,7 @@ def choose_libraries():
     if chosen is None:
         return
     excluded = [library['id'] for index, library in enumerate(libraries) if index not in chosen]
-    kodi.set_setting('excluded_libraries', ','.join(excluded))
+    kodi.save_settings({'excluded_libraries': ','.join(excluded)})
     ask_service('command/sync', timeout=10)
 
 
@@ -270,7 +273,7 @@ def choose_top10():
                                           preselect=[index for index, row in enumerate(rows) if row.get('ranked')])
     if chosen is None:
         return
-    kodi.set_setting('top10_rows', ','.join(str(rows[index]['id']) for index in chosen) or 'none')
+    kodi.save_settings({'top10_rows': ','.join(str(rows[index]['id']) for index in chosen) or 'none'})
     ask_service('command/top10', timeout=10)
 
 

@@ -68,14 +68,14 @@ def ask(store):
     store.update(**{ASKED: True})
     resolution, dynamic_range = suggest(xbmc.getInfoLabel('System.SupportedHDRTypes'),
                                         xbmc.getInfoLabel('System.ScreenHeight'))
-    chosen = _choose(30021, RESOLUTIONS, resolution)
-    if chosen is None:
+    chosen_resolution = _choose(30021, RESOLUTIONS, resolution)
+    if chosen_resolution is None:
         return False
-    kodi.set_setting('max_resolution', chosen)
-    chosen = _choose(30022, RANGES, dynamic_range)
-    if chosen is None:
+    chosen_range = _choose(30022, RANGES, dynamic_range)
+    if chosen_range is None:
         return False
-    kodi.set_setting('dynamic_range', chosen)
+    # Both at once: from the settings screen, saving closes and reopens it (kodi.save_settings).
+    kodi.save_settings({'max_resolution': chosen_resolution, 'dynamic_range': chosen_range})
     kodi.notify(kodi.string(30234))
     return True
 

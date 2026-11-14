@@ -254,6 +254,9 @@ def requested_available(card):
 
 
 class Service(object):
+    # Each row's thread's timings for its log line: Silo's time, details' (time, asked of Kodi).
+    row_timing = threading.local()
+
     def __init__(self):
         self.monitor = Monitor(self)
         self.version = kodi.version()
@@ -1046,6 +1049,13 @@ class Service(object):
 
     def widget_items(self, section, library_id=None):
         """One Silo row (a home row, or a library's own) as Kodi library ids, in Silo's order."""
+        started = time.time()
+        try:
+            return self._widget_items(section, library_id)
+        finally:
+            self.row_timing.silo = time.time() - started
+
+    def _widget_items(self, section, library_id=None):
         if library_id:
             page = self.client.get('/library/%s/sections/%s/items' % (library_id, section))
         else:
@@ -1063,9 +1073,16 @@ class Service(object):
         return home_row_items(page, section, self.db)
 
     def with_details(self, items):
-        """Row items with their cached library details, so the plugin needn't look them up."""
+        """Row items with their cached library details, so the plugin needn't
+        look them up. A title not cached is asked of Kodi (JSON-RPC), one at a
+        time: on a huge library mid-sync that can be most of a row; the count
+        and time are kept for the row's log line (row_timing)."""
+        started, missed = time.time(), 0
         for item in items:
+            if not self.details.cached(item['type'], item['kodi_id']):
+                missed += 1
             item['cached'] = self.details.get(item['type'], item['kodi_id'])
+        self.row_timing.details = (time.time() - started, missed)
         return items
 
     def publish_signed_in(self):

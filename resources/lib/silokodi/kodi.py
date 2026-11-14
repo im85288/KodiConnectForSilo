@@ -69,6 +69,30 @@ def set_setting(key, value):
     addon().setSetting(key, value)
 
 
+def settings_open():
+    """Whether Kodi's add-on settings screen is open (an action there runs this add-on)."""
+    return xbmc.getCondVisibility('Window.IsVisible(addonsettings)')
+
+
+def save_settings(values):
+    """Save settings from an action on the settings screen. That screen keeps
+    its own copy of the settings and saves it when closed, over anything saved
+    meanwhile (the first-run answers came back as 1080p and SDR). So it is
+    closed first (it then rereads them from disk), the values saved, and the
+    screen opened again showing them. Edits not yet saved there are dropped."""
+    reopen = settings_open()
+    if reopen:
+        xbmc.executebuiltin('Dialog.Close(addonsettings)')
+        for _ in range(50):
+            if not settings_open():
+                break
+            xbmc.sleep(100)
+    for key, value in values.items():
+        set_setting(key, value)
+    if reopen:
+        xbmc.executebuiltin('Addon.OpenSettings(%s)' % ADDON_ID)
+
+
 def log(message, level=xbmc.LOGINFO):
     xbmc.log('[%s] %s' % (ADDON_ID, message), level)
 

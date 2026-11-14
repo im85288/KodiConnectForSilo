@@ -73,6 +73,11 @@ class DetailsCache(object):
         self.shows = {}
         self.dirty = False  # changed since last saved
 
+    def cached(self, kind, kodi_id):
+        """Whether a title's details are in the cache (else get asks Kodi)."""
+        with self.lock:
+            return (kind, kodi_id) in self.titles
+
     def get(self, kind, kodi_id):
         key = (kind, kodi_id)
         with self.lock:

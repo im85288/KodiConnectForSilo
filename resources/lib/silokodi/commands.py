@@ -15,6 +15,9 @@ from .sync import WIDE_SECTIONS
 PERSONAL_LISTS = {'watchlist': ('/watchlist', 30160), 'favorites': ('/favorites', 30161),
                   'history': ('/history', 30162)}
 
+# A row slower than this (seconds) logs where its time went: Silo, or Kodi's library details.
+ROW_SLOW = 1.0
+
 
 def handle(service, name, query):
     if name == 'signed_in':
@@ -207,6 +210,11 @@ def handle(service, name, query):
         try:
             section = query.get('section') or 'continue_watching'
             items = service.with_details(service.widget_items(section, query.get('library')))
+            silo = getattr(service.row_timing, 'silo', 0.0)
+            details, asked = getattr(service.row_timing, 'details', (0.0, 0))
+            if silo + details > ROW_SLOW:
+                kodi.log('Row %s: %d items, Silo %.2f s, library details %.2f s (%d asked of Kodi)'
+                         % (section, len(items), silo, details, asked))
             if not query.get('library'):
                 numbered = str(section) in service.ranked
                 placed = home_cards.ranking(service.row_titles.get((None, str(section))))

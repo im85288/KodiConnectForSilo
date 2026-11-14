@@ -83,3 +83,41 @@ def test_the_service_asks_only_on_home_with_nothing_playing(monkeypatch):
     svc.ask_about_display(service.DISPLAY_ASK_AFTER + 5)
     svc.ask_about_display(service.DISPLAY_ASK_AFTER + 10)
     assert runs == ['RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=display)']
+
+
+def test_settings_saved_from_the_settings_screen_survive_it_closing(monkeypatch):
+    from resources.lib.silokodi import kodi
+    calls, open_now = [], [True]
+    monkeypatch.setattr(kodi.xbmc, 'getCondVisibility', lambda condition: open_now[0])
+
+    def builtin(command):
+        calls.append(command)
+        if command.startswith('Dialog.Close'):
+            open_now[0] = False  # Kodi rereads the settings from disk as it closes
+    monkeypatch.setattr(kodi.xbmc, 'executebuiltin', builtin)
+    monkeypatch.setattr(kodi.xbmc, 'sleep', lambda ms: None, raising=False)
+    monkeypatch.setattr(kodi, 'set_setting', lambda key, value: calls.append('set %s=%s' % (key, value)))
+    kodi.save_settings({'max_resolution': '2160p', 'dynamic_range': 'dv'})
+    # Closed first, then saved, then opened again showing them.
+    assert calls == ['Dialog.Close(addonsettings)', 'set max_resolution=2160p', 'set dynamic_range=dv',
+                     'Addon.OpenSettings(plugin.video.kodiconnectforsilo)']
+    calls[:] = []
+    kodi.save_settings({'top10_rows': 'none'})  # not on the settings screen: just saved
+    assert calls == ['set top10_rows=none']
+
+
+def test_sign_in_from_the_settings_screen_leaves_the_question_for_home(monkeypatch, tmp_path):
+    from resources.lib.silokodi import plugin, kodi, auth
+    asked = []
+    monkeypatch.setattr(kodi, 'profile_dir', lambda: str(tmp_path))
+    monkeypatch.setattr(auth, 'sign_in', lambda store: True)
+    monkeypatch.setattr(plugin, 'ask_service', lambda *a, **k: {})
+    monkeypatch.setattr(kodi, 'notify', lambda *a, **k: None)
+    monkeypatch.setattr(kodi, 'string', lambda string_id: 'Signed in as %s')
+    monkeypatch.setattr(plugin.display, 'ask_once', lambda store: asked.append(True))
+    monkeypatch.setattr(kodi, 'settings_open', lambda: True)
+    plugin.sign_in()
+    assert asked == []
+    monkeypatch.setattr(kodi, 'settings_open', lambda: False)
+    plugin.sign_in()
+    assert asked == [True]
