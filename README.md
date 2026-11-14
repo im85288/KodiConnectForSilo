@@ -200,6 +200,14 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.21.2 (2026-11-14)
+- **Screensaver logos and whole backgrounds:** Kodi lays add-on windows out on a 1280x720 grid, not 1920x1080, so
+  the screensaver drew each background too large (only its top left showed) and put the logo and name below the
+  bottom edge. Its layout now scales to the window's size.
+- **No home screen behind it:** a black base sits under everything, and each background and logo load first on
+  transparent layers, then appear together. Pictures come from Kodi's cache again (they were fetched fresh each
+  time), so one shown before appears at once.
+
 ### v0.21.1 (2026-11-14)
 - **Picture cache cleared for you:** when the picture size changes (4K menus on or off), the add-on also removes
   Silo's pictures from Kodi's cache, through Kodi's own interface, so they download again at the new size. Only
