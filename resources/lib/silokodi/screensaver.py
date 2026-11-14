@@ -5,6 +5,7 @@ one), then the next, cross-fading. Silo's films and shows only: their art
 comes through the add-on's relay, so it is already on the device's network
 and costs no disk. Any skin can use it (Settings > Interface > Screensaver).
 """
+import os
 import random
 
 import xbmc
@@ -14,9 +15,22 @@ from . import kodi
 
 SLIDE = 12  # seconds a title stays
 FADE = 1500  # ms of cross-fade between titles
-PRELOAD = 3  # seconds a backdrop loads, unseen beneath the top layer, before that fades out
+PRELOAD = 3  # seconds a backdrop loads, unseen (the loader layer), before it shows
 BATCH = 60  # titles fetched at a time, at random
-W, H = 1920, 1080
+W, H = 1920, 1080  # the layout's design size, scaled to the window's (layout)
+
+
+def layout(width, height):
+    """The controls' rectangles (x, y, w, h) for a window this size. Kodi
+    lays add-on windows out on a 1280x720 grid, not 1920x1080: drawn at
+    1920x1080 sizes, only the top left of each backdrop showed and the logo
+    and name sat below the bottom edge, so no logo ever appeared."""
+    sx, sy = float(width or 1280) / W, float(height or 720) / H
+
+    def rect(x, y, w, h):
+        return int(x * sx), int(y * sy), int(w * sx), int(h * sy)
+    return {'backdrop': rect(0, 0, W, H), 'logo': rect(120, H - 340, 640, 220),
+            'name': rect(120, H - 200, 1200, 90)}
 
 
 def titles(rand=random):
@@ -38,21 +52,34 @@ class Screensaver(xbmcgui.WindowDialog):
 
     def __init__(self):
         xbmcgui.WindowDialog.__init__(self)
+        rects = layout(self.getWidth(), self.getHeight())
+        # Black beneath everything: the home screen never shows through, even
+        # before the first backdrop has loaded.
+        white = os.path.join(kodi.addon().getAddonInfo('path'), 'resources', 'media', 'white.png')
+        self.addControl(xbmcgui.ControlImage(*rects['backdrop'], filename=white, aspectRatio=0,
+                                             colorDiffuse='FF000000'))
+        # The loader: fully transparent, so it shows nothing, but drawn, so
+        # Kodi loads (and caches) each backdrop before a layer shows it.
+        self.loader = xbmcgui.ControlImage(*rects['backdrop'], filename='', aspectRatio=2, colorDiffuse='00FFFFFF')
+        self.addControl(self.loader)
         self.layers = []
         drift = [('conditional', 'effect=zoom start=100 end=108 center=auto time=%d condition=true' % (SLIDE * 1000 + FADE)),
                  ('visiblechange', 'effect=fade time=%d' % FADE)]
         for _ in range(2):
-            layer = xbmcgui.ControlImage(0, 0, W, H, '', aspectRatio=2, colorDiffuse='FFBEBEBE')
+            layer = xbmcgui.ControlImage(*rects['backdrop'], filename='', aspectRatio=2, colorDiffuse='FFBEBEBE')
             self.addControl(layer)
             layer.setAnimations(drift)
             layer.setVisible(False)
             self.layers.append(layer)
-        self.logo = xbmcgui.ControlImage(120, H - 340, 640, 220, '', aspectRatio=2)
-        self.name = xbmcgui.ControlLabel(120, H - 200, 1200, 90, '', font='font_MainMenu', textColor='FFEDEDED')
+        self.logo_loader = xbmcgui.ControlImage(*rects['logo'], filename='', aspectRatio=2, colorDiffuse='00FFFFFF')
+        self.addControl(self.logo_loader)
+        self.logo = xbmcgui.ControlImage(*rects['logo'], filename='', aspectRatio=2)
+        self.name = xbmcgui.ControlLabel(*rects['name'], label='', font='font_MainMenu', textColor='FFEDEDED')
         for control in (self.logo, self.name):
             self.addControl(control)
             control.setAnimations([('visiblechange', 'effect=fade time=%d' % FADE)])
         self.ended = False
+        self.top_shown = False  # which backdrop layer shows: the first goes on top
 
     def onAction(self, action):
         # Any key ends it (Kodi also says so to Monitor when it's the screensaver).
@@ -60,24 +87,25 @@ class Screensaver(xbmcgui.WindowDialog):
         self.close()
 
     def show_title(self, title, wait=lambda seconds: False):
-        """The next backdrop, never through a see-through moment: on the top
-        layer it fades in over the bottom one; on the bottom layer (already
-        showing, covered by the top) it loads unseen for PRELOAD seconds and
-        is then revealed as the top fades out. Revealed at once, a backdrop
-        still loading (a 4K original is ~2 MB) left the bottom layer empty
-        and Kodi's home showed through. wait(seconds) is True to stop."""
+        """The next backdrop with its logo, never through a see-through moment
+        and never the logo first: it loads on the transparent loader layer
+        for PRELOAD seconds, then shows from Kodi's cache, on the top layer
+        fading in over the bottom one or on the bottom one (covered by the
+        top) as the top fades out. wait(seconds) is True to stop."""
+        self.loader.setImage(title['fanart'], True)
+        self.logo_loader.setImage(title['logo'], True)
+        if wait(PRELOAD):
+            return
         bottom, top = self.layers
-        self.top_shown = not getattr(self, 'top_shown', False)
+        self.top_shown = not self.top_shown
         if not self.top_shown:
-            bottom.setImage(title['fanart'], False)
+            bottom.setImage(title['fanart'], True)
             bottom.setVisible(True)
-            if wait(PRELOAD):
-                return
             top.setVisible(False)
         else:
-            top.setImage(title['fanart'], False)
+            top.setImage(title['fanart'], True)
             top.setVisible(True)
-        self.logo.setImage(title['logo'], False)
+        self.logo.setImage(title['logo'], True)
         self.logo.setVisible(bool(title['logo']))
         self.name.setLabel(title['name'] if not title['logo'] else '')
 
