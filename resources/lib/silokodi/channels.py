@@ -10,7 +10,7 @@ import re
 import sqlite3
 import time
 
-from . import kodi
+from . import fileio, kodi
 
 REMOVED_FILE = 'recent_channels_removed.json'
 LIMIT = 20
@@ -70,9 +70,7 @@ def load_previews():
 
 
 def save_previews(previews):
-    with open(previews_path() + '.tmp', 'w') as handle:
-        json.dump(previews, handle)
-    os.replace(previews_path() + '.tmp', previews_path())
+    fileio.write_json(previews_path(), previews)
 
 
 def note_preview(channel_id, now=None, kodi_watched=None):
@@ -123,8 +121,7 @@ def remove(channel_id, watched):
     """Leave a channel out of the recent list until it is watched again."""
     removed = load_removed()
     removed[str(channel_id)] = watched.get(int(channel_id), 0)
-    with open(removed_path(), 'w') as handle:
-        json.dump(removed, handle)
+    fileio.write_json(removed_path(), removed)
 
 
 CATCHUP_DAYS = 7

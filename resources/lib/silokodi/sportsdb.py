@@ -9,8 +9,9 @@ its next fixture for NEXT_TTL. A refused or failed call pauses every lookup
 for PAUSE.
 """
 import json
-import os
 import re
+
+from . import fileio
 
 API = 'https://www.thesportsdb.com/api/v1/json/123/'
 CACHE = 'sportsdb.json'
@@ -46,9 +47,7 @@ def load(path):
 
 
 def save(path, data):
-    with open(path + '.tmp', 'w', encoding='utf-8') as handle:
-        json.dump(data, handle)
-    os.replace(path + '.tmp', path)
+    fileio.write_json(path, data)
 
 
 def team_record(raw):

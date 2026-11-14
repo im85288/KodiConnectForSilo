@@ -20,7 +20,7 @@ import os
 import re
 import xml.etree.ElementTree as ET
 
-from . import kodi
+from . import fileio, kodi
 
 TEAMS_ROW, ON_NOW_ROW, SPORT_ROW = 'teams', 'onnow', 'sport'
 # My teams last: it's often a fixture days off, On now what's playing (the user's order).
@@ -557,11 +557,8 @@ def load_reminders(path=None):
 
 
 def save_reminders(reminders, path=None):
-    import json
     path = path or reminders_path()
-    with open(path + '.tmp', 'w', encoding='utf-8') as handle:
-        json.dump(reminders, handle)
-    os.replace(path + '.tmp', path)
+    fileio.write_json(path, reminders)
 
 
 def toggle_reminder(start, ids, title, path=None):
@@ -783,11 +780,8 @@ def load_sport_groups(path=None):
 
 
 def save_sport_groups(groups, path=None):
-    import json
     path = path or os.path.join(kodi.profile_dir(), SPORT_GROUPS)
-    with open(path + '.tmp', 'w', encoding='utf-8') as handle:
-        json.dump(list(groups), handle)
-    os.replace(path + '.tmp', path)
+    fileio.write_json(path, list(groups))
 
 
 def choose_sport_groups():

@@ -5,6 +5,7 @@ import json
 import os
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 
 from .mapping import unsigned
@@ -47,8 +48,17 @@ class SyncDB(object):
         self.path = os.path.join(folder, 'silokodi.db')
         self._lock = threading.RLock()
         self._batching = 0
-        self._conn = sqlite3.connect(self.path, timeout=30, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        self.damaged = None  # why a damaged database was set aside at start, if one was
+        try:
+            self._conn = self._connect(check=True)
+        except sqlite3.DatabaseError as error:
+            # Damaged storage (a power cut, an SD card going bad): keep the file
+            # for a look, start empty. It only mirrors Silo, so the next sync
+            # rebuilds it, and Kodi's rows are found again by their files and
+            # folders rather than written twice (Syncer._existing).
+            self.damaged = str(error) or type(error).__name__
+            self._set_aside()
+            self._conn = self._connect(check=False)
         # A sync commits tens of thousands of small writes. With the default
         # journal each one waits for the disk, which on a SHIELD's flash
         # storage made a first sync crawl at about one movie a second. In WAL
@@ -60,6 +70,26 @@ class SyncDB(object):
         with self._lock:
             self._conn.executescript(SCHEMA)
             self._conn.commit()
+
+    def _connect(self, check):
+        connection = sqlite3.connect(self.path, timeout=30, check_same_thread=False)
+        connection.row_factory = sqlite3.Row
+        if check:
+            try:
+                result = connection.execute('PRAGMA quick_check').fetchone()[0]  # 0.04 s for 22 MB on a Ugoos
+            except sqlite3.DatabaseError:
+                connection.close()
+                raise
+            if result != 'ok':
+                connection.close()
+                raise sqlite3.DatabaseError(result)
+        return connection
+
+    def _set_aside(self):
+        stamp = time.strftime('%Y%m%d-%H%M%S')
+        for suffix in ('', '-wal', '-shm'):
+            if os.path.exists(self.path + suffix):
+                os.replace(self.path + suffix, '%s.damaged-%s%s' % (self.path, stamp, suffix))
 
     def _commit(self):
         if not self._batching:

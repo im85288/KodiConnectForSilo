@@ -4,13 +4,21 @@
 It lives in one JSON file in the add-on's profile folder. The service owns the
 tokens once signed in; the plugin process writes the file only when someone
 signs in or out, and the service notices the change by the file's mtime.
+
+Each write also keeps a last-good copy (account.json.bak). If the file can't
+be read (a power cut while the storage held it half written), the copy is
+read instead: without it the add-on would be signed out, and a new device id
+would make it a new device in Silo.
 """
 import json
 import os
 import threading
 import uuid
 
+from .fileio import write_atomic
+
 FILENAME = 'account.json'
+BACKUP_SUFFIX = '.bak'
 
 
 class Store(object):
@@ -23,15 +31,29 @@ class Store(object):
 
     def reload(self):
         with self._lock:
+            self.recovered = False
             try:
-                with open(self.path, 'r') as handle:
-                    self._data = json.load(handle)
+                self._data = self._read(self.path)
                 self._mtime = os.path.getmtime(self.path)
             except (IOError, OSError, ValueError):
-                self._data = {}
-                self._mtime = None
+                self._data, self._mtime = {}, None
+                try:
+                    self._data = self._read(self.path + BACKUP_SUFFIX)
+                    self.recovered = os.path.exists(self.path)  # unreadable, not simply missing
+                except (IOError, OSError, ValueError):
+                    pass
+                if self._data:
+                    self._write()  # the file again, from the copy
             if not self._data.get('device_id'):
                 self._data['device_id'] = str(uuid.uuid4())
+
+    @staticmethod
+    def _read(path):
+        with open(path, 'r') as handle:
+            data = json.load(handle)
+        if not isinstance(data, dict):
+            raise ValueError('not a sign-in record')
+        return data
 
     def changed_on_disk(self):
         try:
@@ -66,12 +88,10 @@ class Store(object):
         return bool(self.get('server_url') and self.get('refresh_token') and self.get('profile_id'))
 
     def _write(self):
-        temp = self.path + '.tmp'
-        with open(temp, 'w') as handle:
-            json.dump(self._data, handle)
-        try:
-            os.chmod(temp, 0o600)  # holds sign-in tokens
-        except OSError:
-            pass
-        os.replace(temp, self.path)
+        data = json.dumps(self._data)
+        write_atomic(self.path, data, 0o600)  # holds sign-in tokens
         self._mtime = os.path.getmtime(self.path)
+        try:
+            write_atomic(self.path + BACKUP_SUFFIX, data, 0o600)
+        except (IOError, OSError):
+            pass  # the copy is a spare: the record itself is saved

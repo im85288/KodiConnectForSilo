@@ -3,10 +3,9 @@
 and a cache of them for the service: the lookups are most of the time a
 Home row takes on a SHIELD (about 60 ms a title)."""
 import json
-import os
 import threading
 
-from . import kodi
+from . import fileio, kodi
 from .mapping import NEW_EPISODE_DAYS
 
 MOVIE_FIELDS = ['title', 'plot', 'year', 'rating', 'ratings', 'runtime', 'genre', 'mpaa', 'art', 'resume',
@@ -112,9 +111,7 @@ class DetailsCache(object):
         with self.lock:
             titles = [[kind, kodi_id, value] for (kind, kodi_id), value in self.titles.items()]
             self.dirty = False
-        with open(path + '.part', 'w') as handle:
-            json.dump({'version': self.VERSION, 'titles': titles}, handle)
-        os.replace(path + '.part', path)
+        fileio.write_json(path, {'version': self.VERSION, 'titles': titles})
 
     def load(self, path):
         try:

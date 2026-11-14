@@ -7,13 +7,12 @@ routes need the sign-in header, so Kodi opens them through the service's
 loopback relay, which adds a fresh token to each request.
 """
 import json
-import os
 import platform
 import threading
 import time
 import uuid
 
-from . import mapping, subtitleprefs, upnext
+from . import fileio, mapping, subtitleprefs, upnext
 from .api import ApiError
 
 PROTOCOL = 3
@@ -343,9 +342,7 @@ class PlaybackManager(object):
         sessions = [[s.installation_id, s.session_id] for s in (self.pending, self.active)
                     if s and s.session_id and not s.stopped]
         try:
-            with open(self.ledger + '.tmp', 'w') as handle:
-                json.dump(sessions, handle)
-            os.replace(self.ledger + '.tmp', self.ledger)
+            fileio.write_json(self.ledger, sessions)
         except (OSError, ValueError) as error:
             self.log('Could not note the open Silo session: %s' % error)
 

@@ -260,6 +260,11 @@ class Service(object):
         self.store = Store(kodi.profile_dir())
         self.client = SiloClient(self.store, self.version, xbmc.getInfoLabel('System.FriendlyName'))
         self.db = SyncDB(kodi.profile_dir())
+        # After a power cut: say what was recovered (the file left aside is kept for a look).
+        if self.db.damaged:
+            kodi.log_warning('The saved library was damaged (%s): set aside, rebuilding it from Silo' % self.db.damaged)
+        if self.store.recovered:
+            kodi.log_warning('The sign-in record was unreadable: restored from its last-good copy')
         self.port = kodi.setting_int('relay_port') or DEFAULT_PORT
         self.syncer = Syncer(self.client, self.db, self.open_kodi, self.port, log=kodi.log,
                              should_stop=self.monitor.abortRequested, progress=self.sync_progress,

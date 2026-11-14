@@ -11,7 +11,7 @@ import os
 import xbmc
 import xbmcvfs
 
-from . import kodi
+from . import fileio, kodi
 
 SKIN = 'skin.silo.skyline'
 NAME = 'zz_skyline_livetv.xml'
@@ -50,8 +50,7 @@ def _sync(name, mark, wanted):
         if not new or current == new:
             return None
         xbmcvfs.mkdirs(os.path.dirname(target))
-        with open(target, 'wb') as handle:
-            handle.write(new)
+        fileio.write_atomic(target, new)
         return 'installed' if current is None else 'updated'
     if current is not None and mark in current:
         os.remove(target)
