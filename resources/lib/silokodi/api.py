@@ -57,6 +57,18 @@ def normalize_server_url(url):
     return url
 
 
+# Widths asked for when Kodi draws its menus at 4K: Silo's "large" is sized for
+# 1080p (posters 780, backgrounds 1280 wide from TMDB). Silo picks the
+# narrowest stored size at least this wide, or the original (at most 3840).
+ART_WIDTHS_4K = {'poster_width': 1000, 'backdrop_width': 3840, 'logo_width': 3840}
+UHD_GUI_WIDTH = 3000
+
+
+def art_widths_for(gui_width):
+    """The artwork widths for menus drawn this wide ({} below 4K)."""
+    return dict(ART_WIDTHS_4K) if (gui_width or 0) >= UHD_GUI_WIDTH else {}
+
+
 class SiloClient(object):
     def __init__(self, store, version='0.0.0', device_name=None, can_refresh=True):
         self.store = store
@@ -65,8 +77,13 @@ class SiloClient(object):
         self.can_refresh = can_refresh
         self.session = requests.Session()
         self._refresh_lock = threading.Lock()
+        self.art_widths = {}  # wider artwork for 4K menus (art_widths_for)
 
     # ----- plumbing -----
+
+    def art_query(self):
+        """Artwork parameters for every request that returns pictures."""
+        return dict({'image_size': 'large'}, **self.art_widths)
 
     @property
     def server_url(self):
@@ -226,29 +243,29 @@ class SiloClient(object):
     def catalog(self, library_id, media_type):
         """Every card of one type in a library, in a stable order."""
         return self.pages('/catalog', library_id=library_id, type=media_type, sort='added_at',
-                          skip_total='true', image_size='large')
+                          skip_total='true', **self.art_query())
 
     def box_set(self, box_set_id, library_id):
         """A box set with its movies in the library, in release order (items)."""
-        return self.get('/catalog/box-sets/%s' % box_set_id, library_id=library_id, image_size='large')
+        return self.get('/catalog/box-sets/%s' % box_set_id, library_id=library_id, **self.art_query())
 
     def item_box_set(self, content_id, library_id):
         """The box set a movie is in, with its movies in the library in release
         order (items); None if it's in none. Silo has no list of a library's
         box sets: it took them out of its grids (silo-server #3434)."""
         return self.get('/catalog/items/%s/box-set' % content_id, library_id=library_id,
-                        image_size='large').get('box_set')
+                        **self.art_query()).get('box_set')
 
     def item(self, content_id):
-        return self.get('/catalog/items/%s' % content_id, image_size='large')
+        return self.get('/catalog/items/%s' % content_id, **self.art_query())
 
     def seasons(self, series_id):
         # Not paged: one answer holds every season.
-        return self.get('/catalog/series/%s/seasons' % series_id, image_size='large').get('items') or []
+        return self.get('/catalog/series/%s/seasons' % series_id, **self.art_query()).get('items') or []
 
     def season_episodes(self, series_id, season_number):
         return self.get('/catalog/series/%s/seasons/%s/episodes' % (series_id, season_number),
-                        image_size='large').get('items') or []
+                        **self.art_query()).get('items') or []
 
     def progress(self):
         """Watch progress, newest change first."""

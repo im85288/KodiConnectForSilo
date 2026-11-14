@@ -19,6 +19,7 @@ import xbmcgui
 from . import catchup, jump, kodi, kodidb, mapping, migrate, quick, tracks, upnext, keymap
 from . import channels, commands, display, playeraudio, playersubs, theme, tvrows
 from .theme import ThemePlayer
+from . import api
 from .api import ApiError, SignedOut, SiloClient
 from .events import Debouncer, EventListener
 from .playback import PlaybackError, PlaybackManager
@@ -259,6 +260,7 @@ class Service(object):
         self.store = Store(kodi.profile_dir())
         self.client = SiloClient(self.store, self.version, xbmc.getInfoLabel('System.FriendlyName'))
         self.db = SyncDB(kodi.profile_dir())
+        self.use_art_widths(xbmcgui.getScreenWidth())
         self.port = kodi.setting_int('relay_port') or DEFAULT_PORT
         self.syncer = Syncer(self.client, self.db, self.open_kodi, self.port, log=kodi.log,
                              should_stop=self.monitor.abortRequested, progress=self.sync_progress,
@@ -1557,6 +1559,19 @@ class Service(object):
 
     def media_allowed(self, path):
         return any(session_id in path for session_id in self.playback.session_ids())
+
+    def use_art_widths(self, gui_width):
+        """Picture sizes for the menus' resolution. When they change (4K
+        menus on or off), the stored links are dropped so each picture is asked
+        for again at its new size as Kodi next shows it. Home-row cards keep
+        theirs: one can't be asked for alone (refresh_art only schedules the
+        rows), so Kodi would get a 404 and leave it blank; publishing the rows
+        brings them at the new size."""
+        self.client.art_widths = api.art_widths_for(gui_width)
+        if self.db.meta('art_widths', {}) != self.client.art_widths:
+            self.db.clear_art(keep_prefix='row:')
+            self.db.set_meta('art_widths', self.client.art_widths)
+            kodi.log('Artwork sizes for %d-wide menus: %s' % (gui_width or 0, self.client.art_widths or 'large'))
 
     def refresh_art(self, content_id):
         if time.time() - self.art_attempts.get(content_id, 0) < ART_RETRY:

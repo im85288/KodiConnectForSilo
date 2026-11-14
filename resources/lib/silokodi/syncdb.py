@@ -163,6 +163,18 @@ class SyncDB(object):
 
     # ----- artwork -----
 
+    def clear_art(self, keep_prefix=None):
+        """Forget the stored artwork links (but those whose id starts with
+        keep_prefix): the relay asks Silo again for each picture as Kodi next
+        shows it (Relay.fetch_art)."""
+        with self._lock:
+            if keep_prefix:
+                self._conn.execute('DELETE FROM art WHERE substr(content_id, 1, ?) != ?',
+                                   (len(keep_prefix), keep_prefix))
+            else:
+                self._conn.execute('DELETE FROM art')
+            self._commit()
+
     def set_art(self, content_id, urls):
         """urls: {kind: Silo URL}; replaces the item's whole set. Returns the
         kinds whose image changed (its address, not just its signature): Kodi
