@@ -200,6 +200,19 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.21.3 (2026-11-14)
+- **Dolby Vision profile:** badges and the info page's Version line name the profile as Dolby writes it, with
+  its base layer's compatibility: `DOLBY VISION 7.6` (UHD Blu-ray), `8.1` (HDR10-compatible), `5`. Films get it
+  in one rewrite after updating (45 s for 1,166 films on a Ugoos). Season listings don't name an episode's
+  profile, so Dolby Vision episodes get it from their details after each sync, in batches of 100 with a pause,
+  stopping when Silo rate-limits (HTTP 429) and resuming next sync. A Silo-style skin shows it from `silo.dv` or
+  the `silodv` art extra (Skyline 0.12.2).
+- **Power cuts:** every file the add-on keeps is written to a temporary copy, flushed and swapped in;
+  `account.json` keeps a last-good copy, read if it's unreadable (no sign-out, same device id); a damaged
+  `silokodi.db` is set aside and rebuilt from Silo.
+- **Picture-only updates reload no rows:** a Silo update that changes only a title's pictures no longer marks the
+  library updated, so a burst of new backgrounds doesn't reload every row on every page.
+
 ### v0.21.2 (2026-11-14)
 - **Screensaver logos and whole backgrounds:** Kodi lays add-on windows out on a 1280x720 grid, not 1920x1080, so
   the screensaver drew each background too large (only its top left showed) and put the logo and name below the
