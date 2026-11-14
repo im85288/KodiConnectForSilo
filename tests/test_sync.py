@@ -46,8 +46,9 @@ def test_first_sync_writes_movies_into_kodi(syncer, query):
     # The hero's extras, for the rows Kodi lists itself.
     extras = dict(query("SELECT type, url FROM art WHERE media_type = 'movie' AND media_id = ? "
                         "AND type LIKE 'silo%'", (heat[0],)))
+    # Its Dolby Vision profile with it, for the badge (Kodi's stream details don't hold one).
     assert extras == {'silogenre': 'Crime', 'silocast': 'Al Pacino, Robert De Niro', 'silobadge1': '4K',
-                      'silobadge2': 'DOLBY VISION', 'silobadge3': 'TRUEHD 7.1'}
+                      'silobadge2': 'DOLBY VISION 8.1', 'silobadge3': 'TRUEHD 7.1', 'silodv': '8.1'}
     assert query("SELECT rating, votes FROM rating WHERE media_id = ? AND media_type = 'movie'", (heat[0],)) \
         == [(8.3, 673852)]
     assert query("SELECT name FROM tag JOIN tag_link USING (tag_id) WHERE media_id = ? AND media_type = 'movie'",
@@ -245,6 +246,61 @@ def test_new_episode_fetches_only_its_season(syncer, silo, query):
     syncer.sync()
     assert [c for c in silo.calls if c[0] != 'catalog'] == [('season_episodes', 'series-1', 2)]
     assert query('SELECT COUNT(*) FROM episode')[0][0] == 4
+
+
+def test_films_synced_before_the_profile_are_written_once_more(syncer, silo, query):
+    syncer.sync()
+    heat = query("SELECT idMovie FROM movie WHERE c00 = 'Heat'")[0][0]
+    # A library synced by an older version: no profile yet, and its films unchanged since.
+    syncer.db._write("DELETE FROM meta WHERE key = 'dv_profile_v2:1'")
+    with syncer.writing() as kodi:
+        kodi.cursor.execute("DELETE FROM art WHERE media_id = ? AND type = 'silodv'", (heat,))
+    syncer.sync()
+    assert query("SELECT url FROM art WHERE media_id = ? AND type = 'silodv'", (heat,)) == [('8.1',)]
+    assert syncer.db.meta('dv_profile_v2:1') is True
+    silo.calls[:] = []
+    syncer.sync()  # once only: unchanged films are not fetched again
+    assert not [c for c in silo.calls if c[0].startswith('item')]
+
+
+def test_dolby_vision_episodes_get_their_profile_from_their_details(syncer, silo, query):
+    dv = episode('series-1', 2, 2)
+    dv['overlay_summary'] = {'hdr': 'Dolby Vision'}  # all a season listing says
+    dv['versions'] = [{'file_id': 'f2', 'resolution': '2160p',
+                       'video_tracks': [{'codec': 'hevc', 'dv_profile': 7, 'dv_bl_compat_id': 6}]}]
+    plain = episode('series-1', 2, 3)
+    plain['overlay_summary'] = {'hdr': 'Dolby Vision'}  # its details name no profile
+    silo.episodes_of[('series-1', 2)] += [dv, plain]
+    syncer.sync()
+    assert query("SELECT url FROM art WHERE media_type = 'episode' AND type = 'silodv'") == [('7.6',)]
+    assert syncer.db.meta('dv_none') == [plain['content_id']]
+    silo.calls[:] = []
+    syncer.sync()  # neither is asked again
+    assert not [c for c in silo.calls if c[0] == 'item']
+
+
+def test_episode_profiles_stop_when_silo_refuses_and_resume_next_sync(syncer, silo, query, monkeypatch):
+    from resources.lib.silokodi import sync as sync_module
+    from resources.lib.silokodi.api import ApiError
+    monkeypatch.setattr(sync_module, 'EPISODE_DV_BATCH', 1)
+    monkeypatch.setattr(sync_module, 'EPISODE_DV_PAUSE', 0)
+    for number in (2, 3):
+        e = episode('series-1', 2, number)
+        e['overlay_summary'] = {'hdr': 'Dolby Vision'}
+        e['versions'] = [{'file_id': 'f%d' % number, 'video_tracks': [{'dv_profile': 8, 'dv_bl_compat_id': 1}]}]
+        silo.episodes_of[('series-1', 2)].append(e)
+    real_item, refused = silo.item, []
+
+    def rate_limited(content_id):
+        if '-s2e' in content_id and not refused:  # the first episode's details
+            refused.append(content_id)
+            raise ApiError(429, 'rate_limited', 'Too many requests')
+        return real_item(content_id)
+    silo.item = rate_limited
+    syncer.sync()  # the first batch is refused: it stops there
+    assert query("SELECT COUNT(*) FROM art WHERE media_type = 'episode' AND type = 'silodv'") == [(0,)]
+    syncer.sync()  # next time, both
+    assert query("SELECT COUNT(*) FROM art WHERE media_type = 'episode' AND type = 'silodv'") == [(2,)]
 
 
 def test_resync_item_from_event(syncer, silo, query):

@@ -405,3 +405,24 @@ def test_a_stream_silo_drops_mid_film_carries_on_from_where_it_broke(tmp_path):
         upstream.shutdown()
     assert relay_module.content_range(type('R', (), {'status_code': 206, 'headers':
                                                      {'Content-Range': 'bytes 5-9/10'}})()) == (5, 9)
+
+
+def test_the_dolby_vision_badge_names_its_profile():
+    from resources.lib.silokodi import mapping
+    details = {'streamdetails': {'video': [{'width': 3840, 'height': 2160, 'hdrtype': 'dolbyvision'}], 'audio': []},
+               'art': {'silodv': '7'}}
+    props = mapping.skyline_properties('movie', details)
+    assert props['silo.badge2'] == 'DOLBY VISION 7' and props['silo.dv'] == '7'
+    # As Kodi's JSON-RPC gives the entry back: an image:// address around the text.
+    kodi_form = dict(details, art={'silodv': 'image://7/'})
+    assert mapping.skyline_properties('movie', kodi_form)['silo.badge2'] == 'DOLBY VISION 7'
+    hdr10 = dict(details, streamdetails={'video': [{'width': 3840, 'height': 2160, 'hdrtype': 'hdr10'}], 'audio': []})
+    assert mapping.skyline_properties('movie', hdr10)['silo.badge2'] == 'HDR10'
+    assert mapping.dv_profile({'video_tracks': [{'dv_profile': 7, 'dv_bl_compat_id': 6}]}) == '7.6'
+    assert mapping.dv_profile({'video_tracks': [{'dv_profile': 8, 'dv_bl_compat_id': 1}]}) == '8.1'
+    assert mapping.dv_profile({'video_tracks': [{'dv_profile': 5}]}) == '5'
+    # The info page's Version line names it too.
+    assert mapping.skyline_properties('movie', dict(details, art={'silodv': '7.6'}))['silo.version'] \
+        == '4K · Dolby Vision 7.6'
+    assert mapping.dv_profile({'video_tracks': [{'codec': 'hevc'}]}) == ''
+    assert mapping.dv_profile(None) == ''

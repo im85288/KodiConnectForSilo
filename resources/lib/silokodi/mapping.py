@@ -503,10 +503,11 @@ def language_name(code):
     return LANGUAGE_NAMES.get((code or '').lower(), (code or '').upper())
 
 
-def tech_lines(streamdetails):
+def tech_lines(streamdetails, dv=''):
     """Silo's Version / Audio / Subtitles line for an info page:
-    silo.version (4K · HDR), silo.audio (English · EAC3 · 5.1) and
-    silo.subtitles (English, French, or None)."""
+    silo.version (4K · HDR, or 4K · Dolby Vision 7.6 with its profile dv),
+    silo.audio (English · EAC3 · 5.1) and silo.subtitles (English, French,
+    or None)."""
     details = streamdetails or {}
     video = (details.get('video') or [{}])[0]
     audio = (details.get('audio') or [{}])[0]
@@ -515,7 +516,8 @@ def tech_lines(streamdetails):
     # The format by name (Dolby Vision, HDR10+), as the row's badges have it.
     hdr = (video.get('hdrtype') or '').lower()
     if hdr:
-        version.append(HDR_NAMES.get(hdr, 'HDR'))
+        name = HDR_NAMES.get(hdr, 'HDR')
+        version.append('%s %s' % (name, dv) if dv and hdr == 'dolbyvision' else name)
     codec = (audio.get('codec') or '').lower()
     audio_parts = [part for part in (language_name(audio.get('language')),
                                      AUDIO_LINE.get(codec) or AUDIO_CODECS.get(codec, codec.upper()),
@@ -528,6 +530,31 @@ def tech_lines(streamdetails):
     return {'silo.version': ' · '.join(version), 'silo.audio': ' · '.join(audio_parts),
             'silo.subtitles': ', '.join(subtitles[:3]) + (' +%d' % (len(subtitles) - 3) if len(subtitles) > 3 else '')
             if subtitles else 'None'}
+
+
+def art_text(value):
+    """Text this add-on keeps as a Kodi art entry, as written: Kodi's
+    JSON-RPC gives art back as an image://<quoted value>/ address."""
+    value = value or ''
+    if value.startswith('image://'):
+        value = unquote(value[len('image://'):]).rstrip('/')
+    return value
+
+
+def dv_profile(version):
+    """A file's Dolby Vision profile as Dolby writes it, from Silo's scan:
+    the profile and its base layer's compatibility ('7.6' a UHD Blu-ray's,
+    '8.1' HDR10-compatible, '8.4' HLG), or the profile alone where there is
+    none ('5'), as CoreELEC's player details show it; '' for no profile."""
+    for track in (version or {}).get('video_tracks') or []:
+        if track.get('dv_profile') is not None:
+            try:
+                profile = str(int(track['dv_profile']))
+                compat = track.get('dv_bl_compat_id')
+                return '%s.%d' % (profile, int(compat)) if compat else profile
+            except (TypeError, ValueError):
+                return ''
+    return ''
 
 
 def quality_badges(streamdetails):
@@ -736,8 +763,13 @@ def skyline_properties(kind, details, show=None):
         props['silo.rating'] = '%s %.1f' % (RATING_SOURCES.get(best, best.title()), ratings[best]['rating'])
     cast = sorted(details.get('cast') or [], key=lambda person: person.get('order', 999))
     props['silo.cast'] = ', '.join(person['name'] for person in cast[:3] if person.get('name'))
+    # Its Dolby Vision profile, which Kodi's stream details don't hold: the
+    # title's silodv extra (hero_extras), as on the badge "DOLBY VISION 7".
+    dv = art_text((details.get('art') or {}).get('silodv'))
+    if dv:
+        props['silo.dv'] = dv
     for index, badge in enumerate(quality_badges(details.get('streamdetails'))[:3], 1):
-        props['silo.badge%d' % index] = badge
+        props['silo.badge%d' % index] = '%s %s' % (badge, dv) if dv and badge == HDR_LABELS['dolbyvision'] else badge
     # The info page's ratings (an episode shows its series', as Silo does)
     # and its Version / Audio / Subtitles line.
     for source, key in (('imdb', 'imdb'), ('themoviedb', 'tmdb'), ('rottentomatoes', 'rtcritic')):
@@ -747,7 +779,7 @@ def skyline_properties(kind, details, show=None):
             props['silo.rating.%s' % key] = '%d' % round(value * 10) if value is not None else ''
         else:
             props['silo.rating.%s' % key] = '%.1f' % value if value else ''
-    props.update(tech_lines(details.get('streamdetails')))
+    props.update(tech_lines(details.get('streamdetails'), dv))
     if kind == 'tvshow':
         props['silo.new'] = 'New episode' if new_episode(details) else ''
     else:
@@ -770,18 +802,23 @@ SIMILAR_LIMIT = 20
 # only the default one.
 # TMDB's score too: Kodi's lists carry only a title's default rating (IMDb's when it has one).
 HERO_EXTRAS = ('silogenre', 'silocast', 'silobadge1', 'silobadge2', 'silobadge3', 'silotint', 'silotmdb',
-               'silortcritic')
+               'silortcritic', 'silodv')
 
 
-def hero_extras(kind, details, tint=''):
+def hero_extras(kind, details, tint='', dv=None):
     """{extra: text} for a movie or tvshow, from its Kodi details (genre,
     cast, streamdetails): the hero's own text (skyline_properties), so a title
-    from Kodi's lists reads as it does from this add-on's."""
+    from Kodi's lists reads as it does from this add-on's. dv: its Dolby
+    Vision profile (dv_profile), None to keep the one it has."""
+    if dv is None:
+        dv = art_text((details.get('extras') or {}).get('silodv'))
+    details = dict(details, art=dict(details.get('art') or {}, silodv=dv))
     props = skyline_properties(kind, details)
     return {'silogenre': props['silo.genre'], 'silocast': props['silo.cast'],
             'silobadge1': props.get('silo.badge1', ''), 'silobadge2': props.get('silo.badge2', ''),
             'silobadge3': props.get('silo.badge3', ''), 'silotint': tint or '',
-            'silotmdb': props.get('silo.rating.tmdb', ''), 'silortcritic': props.get('silo.rating.rtcritic', '')}
+            'silotmdb': props.get('silo.rating.tmdb', ''), 'silortcritic': props.get('silo.rating.rtcritic', ''),
+            'silodv': dv}
 
 
 def similar_path(kind, genre, title):

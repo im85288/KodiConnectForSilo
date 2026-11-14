@@ -319,6 +319,18 @@ class KodiVideoDB(object):
                 details[kodi_id]['extras'][kind] = value
         return details
 
+    def episodes_missing_dv(self):
+        """Kodi ids of Dolby Vision episodes without their profile (silodv):
+        a season listing doesn't name it, so it comes from each one's details."""
+        self.cursor.execute('''
+            SELECT DISTINCT episode.idEpisode FROM episode
+            JOIN streamdetails ON streamdetails.idFile = episode.idFile AND streamdetails.iStreamType = 0
+                AND streamdetails.strHdrType = 'dolbyvision'
+            WHERE NOT EXISTS (SELECT 1 FROM art WHERE art.media_id = episode.idEpisode
+                              AND art.media_type = 'episode' AND art.type = 'silodv')
+        ''')
+        return [row[0] for row in self.cursor.fetchall()]
+
     def set_hero_extras(self, kodi_id, kodi_type, extras):
         """Replace a title's hero extras ({type: text}; empty ones aren't kept)."""
         self.cursor.execute('DELETE FROM art WHERE media_id = ? AND media_type = ? AND type IN (%s)'

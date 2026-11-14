@@ -20,7 +20,7 @@ def movie(content_id='movie-1', title='Heat', **extra):
         'user_state': {'played': False}, 'user_data': {'played': False, 'last_file_id': '120'},
         'versions': [{'file_id': '120', 'resolution': '2160p', 'codec_video': 'hevc', 'hdr': True,
                       'video_tracks': [{'codec': 'hevc', 'width': 3840, 'height': 1600, 'aspect_ratio': '12:5',
-                                        'dv_profile': 8}],
+                                        'dv_profile': 8, 'dv_bl_compat_id': 1}],
                       'audio_tracks': [{'codec': 'truehd', 'channels': 8, 'language': 'eng'}],
                       'subtitle_tracks': [{'language': 'eng'}]}],
     }

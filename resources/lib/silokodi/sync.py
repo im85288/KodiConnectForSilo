@@ -19,6 +19,13 @@ from .api import ApiError, SignedOut
 
 # meta key prefix: a title's details_fingerprint as last written by resync_item (quiet_unless_shown_changed)
 DETAILS_KEY = 'details:'
+# meta key prefix: a movie library whose films have been written with their Dolby Vision profile
+# in its current form (v2: with the compatibility number, 7.6); a new form writes them once more
+DV_BACKFILL = 'dv_profile_v2:'
+# meta key: Dolby Vision episodes whose details name no profile (fill_episode_profiles)
+DV_NONE = 'dv_none'
+EPISODE_DV_BATCH = 100  # episodes' details fetched and written per transaction
+EPISODE_DV_PAUSE = 2  # seconds between batches: about 3,800 details at once met Silo's rate limit
 
 MOVIE_LIBRARY_TYPES = ('movies', 'mixed')
 SHOW_LIBRARY_TYPES = ('series', 'tv', 'tvshows', 'mixed')
@@ -277,6 +284,7 @@ class Syncer(object):
         self.art_changed = set()
         # {content id: Silo's ambient tint}, from the cards each sync lists.
         self.tints = {}
+        self.dv_profiles = {}  # content id: its Dolby Vision profile, from the copy whose streams Kodi has
         # "library id:type" pairs this sync listed for relabel (RELABELLED).
         self.relabel_ready = set()
         self._base, self._span = 0.0, 100.0
@@ -357,6 +365,7 @@ class Syncer(object):
             self.progress(int(self._base), library.get('name') or '')
             self.sync_library(library)
         self.save_hero_extras()
+        self.fill_episode_profiles()
         self.progress(100, '')
         changed, self.changed = self.changed, self.changed or pending
         return changed
@@ -374,13 +383,52 @@ class Syncer(object):
                         continue
                     # A title this sync didn't list keeps the tint it has.
                     tint = self.tints.get(ours[kodi_id], details['extras'].get('silotint', ''))
-                    extras = mapping.hero_extras(kind, details, tint)
+                    extras = mapping.hero_extras(kind, details, tint, self.dv_profiles.get(ours[kodi_id]))
                     if {k: v for k, v in extras.items() if v} != details['extras']:
                         kodi.set_hero_extras(kodi_id, kind, extras)
                         written += 1
             if written:
                 self.log('Hero details: %d %ss' % (written, kind))
                 self.changed = True
+
+    def fill_episode_profiles(self):
+        """Each Dolby Vision episode's profile (silodv: "7.6", for its badge and
+        Version line), which a season listing doesn't give: from the episode's
+        details, once, a batch at a time. Episodes whose details name none are
+        remembered so they aren't asked again. A file later replaced by
+        another Dolby Vision copy keeps the profile it had."""
+        with self.writing() as kodi:
+            missing = kodi.episodes_missing_dv()
+        none = set(self.db.meta(DV_NONE, []))
+        targets = []
+        for kodi_id in missing:
+            row = self.db.by_kodi('episode', kodi_id)
+            if row and row['content_id'] not in none:
+                targets.append((kodi_id, row['content_id']))
+        filled, unanswered = 0, 0
+        for start in range(0, len(targets), EPISODE_DV_BATCH):
+            self.check_stop()
+            if start:
+                time.sleep(EPISODE_DV_PAUSE)  # Silo rate-limits a burst of details (HTTP 429)
+            batch = targets[start:start + EPISODE_DV_BATCH]
+            items = self.fetch_all(self.client.item, [content_id for _, content_id in batch])
+            with self.writing() as kodi:
+                for (kodi_id, content_id), item in zip(batch, items):
+                    if item is None:
+                        unanswered += 1  # asked again next sync
+                        continue
+                    dv = mapping.dv_profile(mapping.default_version(item))
+                    if dv:
+                        kodi.set_hero_extras(kodi_id, 'episode', {'silodv': dv})
+                        filled += 1
+                    else:
+                        none.add(content_id)
+            self.db.set_meta(DV_NONE, sorted(none))
+            if unanswered:
+                break  # Silo is refusing (rate limit): the rest wait for the next sync
+        if filled:
+            self.log('Dolby Vision profiles: %d episodes' % filled)
+            self.changed = True
 
     def sync_library(self, library):
         kind = (library.get('type') or '').lower()
@@ -415,6 +463,8 @@ class Syncer(object):
         library_id = str(library['id'])
         self._repair_movies(library_id)
         relabel = self.relabel(library_id, 'movie')
+        # Once: every film written again, so each gets its Dolby Vision profile (silodv).
+        dv_backfill = self.db.meta(DV_BACKFILL + library_id) is None and bool(self.db.items('movie', library_id))
         # Read a page at a time and keep only ids and fingerprints: on a 2 GB
         # SHIELD every MB the sync holds is one Kodi lacks when a film starts.
         seen, fetch, states = set(), [], []
@@ -425,7 +475,7 @@ class Syncer(object):
             row = self.db.get(content_id)
             fingerprint = mapping.fingerprint(card)
             if not self._unchanged(row, card, fingerprint) or row['library_id'] != library_id \
-                    or content_id in relabel:
+                    or content_id in relabel or dv_backfill:
                 fetch.append((content_id, fingerprint))
             elif row['state'] != mapping.state_fingerprint(card):
                 states.append((row, {'user_state': card.get('user_state'), 'runtime': card.get('runtime'),
@@ -444,6 +494,7 @@ class Syncer(object):
                         self.write_movie(kodi, item, library, fingerprint)
         self.apply_states(states)
         self.relabelled(library_id, 'movie')
+        self.db.set_meta(DV_BACKFILL + library_id, True)  # every film now has its profile
         gone = [] if self.household else \
             [row for row in self.db.items('movie', library_id) if row['content_id'] not in seen]
         for batch in chunks(gone, BATCH):
@@ -493,6 +544,7 @@ class Syncer(object):
         kodi.set_art(kodi_id, 'movie', local_art)
         version = mapping.default_version(item)
         kodi.set_streams(file_id, mapping.stream_details(version), fields['runtime'])
+        self.dv_profiles[content_id] = mapping.dv_profile(version)
         # The item's details carry the resume position; catalog cards don't.
         count, resume, total, last = mapping.play_state(item)
         kodi.set_play_state(file_id, count, resume, total or fields['runtime'] or 0, last)
