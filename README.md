@@ -200,6 +200,17 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.21.1 (2026-11-14)
+- **Picture cache cleared for you:** when the picture size changes (4K menus on or off), the add-on also removes
+  Silo's pictures from Kodi's cache, through Kodi's own interface, so they download again at the new size. Only
+  Silo's pictures go; nothing needs deleting by hand.
+- **No blank logos:** Kodi asks for a show's poster, background and logo at once. When the add-on had to ask Silo
+  for the show's links again, the first request did and the others were turned away as tried recently, which Kodi
+  showed as a blank picture; they now wait for that request and use its links.
+- **Screensaver without flashes:** a new backdrop on the lower layer loads for three seconds under the upper one
+  before that fades out. Shown at once, a 4K original still loading left the layer empty and Kodi's home showed
+  through.
+
 ### v0.21.0 (2026-11-14)
 - **4K artwork:** when Kodi draws its menus at 4K (as CoreELEC p3i T5 does by default), the add-on asks Silo for
   wider pictures: backgrounds and title logos at their full size (TMDB's originals, backgrounds up to 3840 wide)
