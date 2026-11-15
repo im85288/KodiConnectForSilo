@@ -67,3 +67,24 @@ def test_the_layout_fits_kodis_window_grid():
     assert rects['logo'] == (80, 493, 426, 146)
     assert screensaver.layout(1920, 1080)['logo'] == (120, 740, 640, 220)
     assert screensaver.layout(0, 0)['backdrop'] == (0, 0, 1280, 720)  # unknown size: Kodi's grid
+
+def test_with_clear_logo_off_only_the_backdrop_shows(monkeypatch):
+    from resources.lib.silokodi import screensaver
+    shown = {}
+
+    class Layer(object):
+        def setImage(self, image, use_cache):
+            shown.setdefault('images', []).append(image)
+
+        def setVisible(self, visible):
+            pass
+
+    window = screensaver.Screensaver.__new__(screensaver.Screensaver)
+    window.layers = [Layer(), Layer()]
+    window.loader, window.logo_loader, window.logo, window.name = Layer(), Layer(), Layer(), Layer()
+    window.name.setLabel = lambda text: shown.__setitem__('name', text)
+    window.top_shown = False
+    # Skyline's Look > Clear logo off: SkylineScreensaverNoLogo set.
+    monkeypatch.setattr(screensaver.xbmc, 'getCondVisibility', lambda condition: condition == screensaver.NO_LOGO)
+    window.show_title({'fanart': 'f1', 'logo': 'l1', 'name': 'A'}, lambda s: False)
+    assert 'l1' not in shown['images'] and shown['name'] == ''

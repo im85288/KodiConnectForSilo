@@ -123,6 +123,32 @@
           <constraints><allowempty>true</allowempty></constraints>
           <control type="edit" format="string"/>
         </setting>
+        <setting id="big_art" type="action" label="30248" help="30249">
+          <level>0</level>
+          <data>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=big_art)</data>
+          <constraints><allowempty>true</allowempty></constraints>
+          <control type="button" format="action"><close>true</close></control>
+        </setting>
+        <!-- Kodi's picture sizes before this add-on raised them, and the menus' size last asked about (bigart): internal. -->
+        <setting id="big_art_before" type="string" label="30248">
+          <level>4</level>
+          <default/>
+          <constraints><allowempty>true</allowempty></constraints>
+          <control type="edit" format="string"/>
+        </setting>
+        <setting id="big_art_asked" type="string" label="30248">
+          <level>4</level>
+          <default/>
+          <constraints><allowempty>true</allowempty></constraints>
+          <control type="edit" format="string"/>
+        </setting>
+        <!-- The screensaver chosen before this add-on's, to put back (skinoptions): internal, never shown. -->
+        <setting id="previous_screensaver" type="string" label="30241">
+          <level>4</level>
+          <default/>
+          <constraints><allowempty>true</allowempty></constraints>
+          <control type="edit" format="string"/>
+        </setting>
         <setting id="livetv_keys" type="boolean" label="30166" help="30167">
           <level>0</level>
           <default>true</default>

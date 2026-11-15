@@ -83,6 +83,15 @@ def run(argv):
         # For skin development: reload the skin's XML without restarting Kodi.
         xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
         return xbmc.executebuiltin('ReloadSkin()')
+    if mode == 'big_art':
+        # Kodi's picture sizes for 4K menus (advancedsettings.xml), or back.
+        from . import bigart
+        return bigart.choose()
+    if mode in ('skin_state', 'skin_option'):
+        # A skin's settings screen: how this add-on's screensaver and Kodi's
+        # spoiler setting stand, or one switched (skinoptions).
+        from . import skinoptions
+        return skinoptions.toggle(params.get('name')) if mode == 'skin_option' else skinoptions.state()
     if mode == 'previous':
         return play_previous(params.get('dbid'))
     if mode == 'show':

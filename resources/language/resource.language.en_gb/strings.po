@@ -549,3 +549,39 @@ msgstr ""
 msgctxt "#30240"
 msgid "10 seconds"
 msgstr ""
+
+msgctxt "#30241"
+msgid "Screensaver before Silo's"
+msgstr ""
+
+msgctxt "#30242"
+msgid "Your menus are drawn in 4K. Keep posters and backgrounds sharp? Kodi keeps larger pictures in its cache, and needs a restart to use them."
+msgstr ""
+
+msgctxt "#30243"
+msgid "Your menus are no longer drawn in 4K. Put Kodi's picture sizes back as they were? Smaller pictures use less memory."
+msgstr ""
+
+msgctxt "#30244"
+msgid "Keep posters and backgrounds sharp for 4K menus? Kodi keeps larger pictures in its cache, and needs a restart to use them."
+msgstr ""
+
+msgctxt "#30245"
+msgid "Restart Kodi now to use the new picture sizes?"
+msgstr ""
+
+msgctxt "#30246"
+msgid "Kodi's picture sizes are already large enough for 4K menus"
+msgstr ""
+
+msgctxt "#30247"
+msgid "advancedsettings.xml could not be changed: it isn't in the form expected"
+msgstr ""
+
+msgctxt "#30248"
+msgid "Sharp pictures for 4K menus"
+msgstr ""
+
+msgctxt "#30249"
+msgid "Kodi keeps posters and backgrounds in its cache smaller than 4K menus draw them, so they look soft. This raises the sizes in advancedsettings.xml (the rest of the file is kept), or puts them back. Kodi restarts to use them."
+msgstr ""

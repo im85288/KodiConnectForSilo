@@ -92,6 +92,9 @@ class Screensaver(xbmcgui.WindowDialog):
         for PRELOAD seconds, then shows from Kodi's cache, on the top layer
         fading in over the bottom one or on the bottom one (covered by the
         top) as the top fades out. wait(seconds) is True to stop."""
+        if not logos_shown():
+            # Backdrops alone (Skyline's Clear logo off): no logo, nor its name in place of one.
+            title = dict(title, logo='', name='')
         self.loader.setImage(title['fanart'], True)
         self.logo_loader.setImage(title['logo'], True)
         if wait(PRELOAD):
@@ -108,6 +111,14 @@ class Screensaver(xbmcgui.WindowDialog):
         self.logo.setImage(title['logo'], True)
         self.logo.setVisible(bool(title['logo']))
         self.name.setLabel(title['name'] if not title['logo'] else '')
+
+
+# A skin's switch for the title's logo (Skyline's Look > Clear logo): on unless set.
+NO_LOGO = 'Skin.HasSetting(SkylineScreensaverNoLogo)'
+
+
+def logos_shown():
+    return not xbmc.getCondVisibility(NO_LOGO)
 
 
 class Monitor(xbmc.Monitor):

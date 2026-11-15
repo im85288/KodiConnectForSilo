@@ -17,7 +17,7 @@ import xbmc
 import xbmcgui
 
 from . import catchup, jump, kodi, kodidb, mapping, migrate, quick, tracks, upnext, keymap
-from . import channels, commands, display, playeraudio, playersubs, theme, tvrows
+from . import bigart, channels, commands, display, playeraudio, playersubs, skinoptions, theme, tvrows
 from .theme import ThemePlayer
 from . import api
 from .api import ApiError, SignedOut, SiloClient
@@ -31,6 +31,7 @@ from .personal import PersonalLists
 from .sync import FETCH_WORKERS, MAX_ROWS, MOVIE_LIBRARY_TYPES, NEXT_EPISODE_SECTIONS, SHOW_LIBRARY_TYPES, Stopped, Syncer, collection_cards, home_row_items, page_of, skin_layout
 from .syncdb import SyncDB
 
+BIG_ART_DELAY = 20  # seconds after start: the 4K picture sizes question waits for Home
 PROGRESS_POLL = 300          # seconds between resume-point checks while the socket is up
 PROGRESS_POLL_OFFLINE = 120  # ... and while it is down
 ART_RETRY = 3600             # don't ask Silo for the same missing artwork more often
@@ -379,6 +380,16 @@ class Service(object):
         self.close_leftover_sessions()
         self.start_quickly()
         self.sync_keymap()
+        # A skin's settings toggles (Skyline's Silo screensaver, Hide spoilers)
+        # as Kodi's settings stand now; the skin asks again as its screen opens.
+        try:
+            skinoptions.state()
+        except Exception as error:  # never let it stop the service starting
+            kodi.log_warning('Could not read the screensaver and spoiler settings: %s' % error)
+        # Kodi's picture sizes for the menus' size (bigart): asked once Home has settled.
+        sizes = threading.Timer(BIG_ART_DELAY, self.check_big_art)
+        sizes.daemon = True
+        sizes.start()
         worker = threading.Thread(target=self.work, name='silokodi-worker')
         worker.daemon = True
         worker.start()
@@ -1432,7 +1443,10 @@ class Service(object):
                 continue
             cached = self.details.get(kind, kodi_id)
             if cached:
-                card = home_cards.card(kind, cached['details'], cached.get('show'), source.get('tint'),
+                # A request card's tint is its status colour (Available's green), not
+                # the poster's: there the card takes the title's own (silotint).
+                tint = '' if page == 'requests' else source.get('tint')
+                card = home_cards.card(kind, cached['details'], cached.get('show'), tint,
                                        self.series_art(source))
                 if source.get('next') and not card['left']:
                     card['left'] = home_cards.NEXT_EPISODE
@@ -1596,6 +1610,12 @@ class Service(object):
 
     def media_allowed(self, path):
         return any(session_id in path for session_id in self.playback.session_ids())
+
+    def check_big_art(self):
+        try:
+            bigart.check(xbmcgui.getScreenWidth() >= api.UHD_GUI_WIDTH)
+        except Exception as error:  # a question, never worth stopping the service for
+            kodi.log_warning('Could not check the picture sizes for the menus: %s' % error)
 
     def use_art_widths(self, gui_width):
         """Picture sizes for the menus' resolution. When they change (4K

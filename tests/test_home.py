@@ -68,6 +68,20 @@ def test_continue_watching_cards_are_removable_and_unstarted_episodes_say_next_e
     assert not cards[1].get('dismiss') and not cards[1].get('left')
 
 
+def test_a_requests_library_title_takes_its_posters_colour_not_its_status_colour():
+    # Silo's request card's tint is Available's green: on the hero it washed MobLand green.
+    host = service([])
+    host.details = type('Tinted', (), {'get': lambda self, kind, kodi_id: {
+        'details': dict(SHOW, art={'silotint': 'image://FF2A3B4C/'})}})()
+    host.request_cards = lambda row_id: [{'kind': 'tvshow', 'kodi_id': 1, 'tint': 'FF34D399', 'label': 'Available',
+                                          'type': 'series', 'year': 2025}]
+    card = host.page_cards('requests', 'trending', None)[0]
+    assert card['tint'] == 'FF2A3B4C' and card['status.tint'] == 'FF34D399'
+    # Home's rows send the poster's colour themselves.
+    assert service([{'type': 'tvshow', 'kodi_id': 1, 'tint': 'FF112233'}]).page_cards('home', '7', None)[0]['tint'] \
+        == 'FF112233'
+
+
 def test_the_widget_answer_carries_ranks_places_and_the_title_silo_just_sent():
     host = service(shows(11), 'IMDb Popular Shows', ranked={'7'})
     host.with_details = lambda items: items
@@ -339,3 +353,10 @@ def test_a_slow_row_logs_where_its_time_went(monkeypatch):
     service.ranked, service.row_titles = set(), {}
     commands.handle(service, 'widget', {'section': '42', 'library': '1'})
     assert logged[0] == 'Row 42: 2 items, Silo 3.00 s, library details 2.50 s (1 asked of Kodi)'
+
+
+def test_an_episode_card_carries_its_own_picture_beside_its_shows():
+    card = home_cards.card('episode', dict(EPISODE, art={'thumb': 'still.jpg', 'tvshow.fanart': 'show.jpg'}),
+                           landscape='season.jpg')
+    assert card['art.landscape'] == 'season.jpg' and card['art.still'] == 'still.jpg'
+    assert home_cards.card('tvshow', dict(SHOW, art={'thumb': 'x.jpg'}))['art.still'] == ''

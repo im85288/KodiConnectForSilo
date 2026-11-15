@@ -52,7 +52,7 @@ CARDS = 20  # cards per row; Silo's rows go up to 50 (most hold 13-20), and each
 FIELDS = ('type', 'dbid', 'label', 'card.title', 'card.sub', 'card.wide_sub', 'hero.title', 'hero.meta',
           'hero.facts', 'rating.imdb', 'rating.tmdb', 'rating.rtcritic',
           'hero.detail', 'plot', 'mpaa', 'badge1', 'badge2', 'badge3', 'dv', 'tint', 'percent', 'playcount', 'new', 'left', 'dismiss', 'rank', 'place',
-          'art.poster', 'art.landscape', 'art.fanart', 'art.clearlogo', 'request.type', 'request.tmdb',
+          'art.poster', 'art.landscape', 'art.still', 'art.fanart', 'art.clearlogo', 'request.type', 'request.tmdb',
           'status.tint', 'status.seg1', 'status.seg2', 'status.seg3', 'status.seg4',
           'request.library', 'request.state', 'request.more', 'request.logo', 'request.from', 'request.to',
           'tv.play', 'tv.logo')  # a TV page card's action and channel logo (tvrows.py)
@@ -94,7 +94,8 @@ def card(kind, details, show=None, tint='', landscape=''):
         'rating.rtcritic': '' if episode else props.get('silo.rating.rtcritic', ''),
         'mpaa': props.get('silo.mpaa', ''),
         'badge1': props.get('silo.badge1', ''), 'badge2': props.get('silo.badge2', ''),
-        'badge3': props.get('silo.badge3', ''), 'tint': tint or '',
+        # The poster's colour for the hero's wash: the row's, else the one kept with the title (hero_extras).
+        'badge3': props.get('silo.badge3', ''), 'tint': tint or mapping.art_text(art.get('silotint')),
         # Dolby Vision's profile, apart: a skin adds it to the badge if it wants (DOLBY VISION 7.6).
         'dv': props.get('silo.dv', ''),
         'percent': str(percent) if percent else '', 'playcount': watched_mark(kind, details),
@@ -103,6 +104,8 @@ def card(kind, details, show=None, tint='', landscape=''):
         'art.poster': art.get('poster') or art.get('tvshow.poster') or art.get('thumb') or '',
         'art.landscape': landscape or (art.get('thumb') if episode and art.get('thumb') else
                                        art.get('landscape') or art.get('fanart') or art.get('tvshow.fanart') or ''),
+        # An episode's own picture, for a skin that offers it instead of its show's (Skyline's SkylineEpisodeStills).
+        'art.still': (art.get('thumb') or '') if episode else '',
         'art.fanart': art.get('fanart') or art.get('tvshow.fanart') or art.get('landscape') or '',
         'art.clearlogo': logo,
     }
