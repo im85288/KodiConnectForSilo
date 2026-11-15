@@ -525,3 +525,27 @@ msgstr ""
 msgctxt "#30234"
 msgid "Saved. To change them later: the add-on's settings, Playback."
 msgstr ""
+
+msgctxt "#30235"
+msgid "Resume a little earlier"
+msgstr ""
+
+msgctxt "#30236"
+msgid "When you resume, start this much before where you stopped, so you don't miss a moment. Playback can only begin on certain frames, which can skip the first second or two."
+msgstr ""
+
+msgctxt "#30237"
+msgid "Off"
+msgstr ""
+
+msgctxt "#30238"
+msgid "3 seconds"
+msgstr ""
+
+msgctxt "#30239"
+msgid "5 seconds"
+msgstr ""
+
+msgctxt "#30240"
+msgid "10 seconds"
+msgstr ""

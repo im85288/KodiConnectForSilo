@@ -764,12 +764,14 @@ def skyline_properties(kind, details, show=None):
     cast = sorted(details.get('cast') or [], key=lambda person: person.get('order', 999))
     props['silo.cast'] = ', '.join(person['name'] for person in cast[:3] if person.get('name'))
     # Its Dolby Vision profile, which Kodi's stream details don't hold: the
-    # title's silodv extra (hero_extras), as on the badge "DOLBY VISION 7".
+    # title's silodv extra (hero_extras). Kept apart from the badges and the
+    # Version line, so a skin can add it (DOLBY VISION 7.6) or not at once:
+    # Skyline does when its SkylineDVProfile option is on.
     dv = art_text((details.get('art') or {}).get('silodv'))
     if dv:
         props['silo.dv'] = dv
     for index, badge in enumerate(quality_badges(details.get('streamdetails'))[:3], 1):
-        props['silo.badge%d' % index] = '%s %s' % (badge, dv) if dv and badge == HDR_LABELS['dolbyvision'] else badge
+        props['silo.badge%d' % index] = badge
     # The info page's ratings (an episode shows its series', as Silo does)
     # and its Version / Audio / Subtitles line.
     for source, key in (('imdb', 'imdb'), ('themoviedb', 'tmdb'), ('rottentomatoes', 'rtcritic')):
@@ -779,7 +781,7 @@ def skyline_properties(kind, details, show=None):
             props['silo.rating.%s' % key] = '%d' % round(value * 10) if value is not None else ''
         else:
             props['silo.rating.%s' % key] = '%.1f' % value if value else ''
-    props.update(tech_lines(details.get('streamdetails'), dv))
+    props.update(tech_lines(details.get('streamdetails')))
     if kind == 'tvshow':
         props['silo.new'] = 'New episode' if new_episode(details) else ''
     else:
@@ -809,7 +811,9 @@ def hero_extras(kind, details, tint='', dv=None):
     """{extra: text} for a movie or tvshow, from its Kodi details (genre,
     cast, streamdetails): the hero's own text (skyline_properties), so a title
     from Kodi's lists reads as it does from this add-on's. dv: its Dolby
-    Vision profile (dv_profile), None to keep the one it has."""
+    Vision profile (dv_profile), None to keep the one it has. The badges are
+    kept without it: a skin adds silodv when it shows the profile (Skyline's
+    SkylineDVProfile), so its option needs no library rewrite."""
     if dv is None:
         dv = art_text((details.get('extras') or {}).get('silodv'))
     details = dict(details, art=dict(details.get('art') or {}, silodv=dv))

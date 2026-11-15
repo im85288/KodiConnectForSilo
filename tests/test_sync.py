@@ -46,9 +46,10 @@ def test_first_sync_writes_movies_into_kodi(syncer, query):
     # The hero's extras, for the rows Kodi lists itself.
     extras = dict(query("SELECT type, url FROM art WHERE media_type = 'movie' AND media_id = ? "
                         "AND type LIKE 'silo%'", (heat[0],)))
-    # Its Dolby Vision profile with it, for the badge (Kodi's stream details don't hold one).
+    # Its Dolby Vision profile with it (Kodi's stream details don't hold one), kept
+    # apart from the badges: a skin adds it only when it shows the profile.
     assert extras == {'silogenre': 'Crime', 'silocast': 'Al Pacino, Robert De Niro', 'silobadge1': '4K',
-                      'silobadge2': 'DOLBY VISION 8.1', 'silobadge3': 'TRUEHD 7.1', 'silodv': '8.1'}
+                      'silobadge2': 'DOLBY VISION', 'silobadge3': 'TRUEHD 7.1', 'silodv': '8.1'}
     assert query("SELECT rating, votes FROM rating WHERE media_id = ? AND media_type = 'movie'", (heat[0],)) \
         == [(8.3, 673852)]
     assert query("SELECT name FROM tag JOIN tag_link USING (tag_id) WHERE media_id = ? AND media_type = 'movie'",
@@ -252,12 +253,12 @@ def test_films_synced_before_the_profile_are_written_once_more(syncer, silo, que
     syncer.sync()
     heat = query("SELECT idMovie FROM movie WHERE c00 = 'Heat'")[0][0]
     # A library synced by an older version: no profile yet, and its films unchanged since.
-    syncer.db._write("DELETE FROM meta WHERE key = 'dv_profile_v2:1'")
+    syncer.db._write("DELETE FROM meta WHERE key = 'dv_profile_v3:1'")
     with syncer.writing() as kodi:
         kodi.cursor.execute("DELETE FROM art WHERE media_id = ? AND type = 'silodv'", (heat,))
     syncer.sync()
     assert query("SELECT url FROM art WHERE media_id = ? AND type = 'silodv'", (heat,)) == [('8.1',)]
-    assert syncer.db.meta('dv_profile_v2:1') is True
+    assert syncer.db.meta('dv_profile_v3:1') is True
     silo.calls[:] = []
     syncer.sync()  # once only: unchanged films are not fetched again
     assert not [c for c in silo.calls if c[0].startswith('item')]

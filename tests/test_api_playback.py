@@ -162,7 +162,9 @@ def test_start_builds_a_v3_request_and_returns_a_signed_url(store):
         assert key in body
     assert body['installation_id'] == 'inst-1'
     assert body['file_id'] == '120' and body['profile_id'] == 'p1'
-    assert body['start_position'] == 1325.0
+    # Resumed a little before where it was left (resume_back, 3 s unless set).
+    assert body['start_position'] == 1322.0
+    assert mgr.pending.resume_to == 1322.0
     # No header-authenticated media: the URL is signed, so Kodi needs no token.
     assert 'header_authenticated_media_v1' not in body['client_features']
     caps = body['client_capabilities']
@@ -174,6 +176,42 @@ def test_start_builds_a_v3_request_and_returns_a_signed_url(store):
                                    'https://silo.test/api/v2/stream/s1/subtitles/2.srt?downloaded_subtitle_id=9']
     assert answer['hls'] is False and answer['start_offset'] == 0
     assert 'Authorization' not in json.dumps(answer)
+
+
+@pytest.mark.parametrize('back, start', [(0, 1325.0), (5, 1320.0), (10, 1315.0)])
+def test_resume_back_setting_moves_the_start(store, back, start):
+    mgr, client = manager(store, [('GET', '/api/v2/catalog/items/movie-1', Response(200, movie(position_seconds=1325.0))),
+                                  ('GET', '/api/v2/playback/capabilities', Response(200, CAPABILITY)),
+                                  ('POST', '/api/v2/playback/start', Response(201, plan()))],
+                          {'max_resolution': '2160p', 'dynamic_range': 'dv', 'resume_back': back})
+    mgr.start('movie-1', resume=True)
+    assert client.session.sent[2][2]['start_position'] == start
+
+
+def test_from_the_start_has_no_resume_point(store):
+    mgr, client = manager(store, [('GET', '/api/v2/catalog/items/movie-1', Response(200, movie(position_seconds=1325.0))),
+                                  ('GET', '/api/v2/playback/capabilities', Response(200, CAPABILITY)),
+                                  ('POST', '/api/v2/playback/start', Response(201, plan()))])
+    mgr.start('movie-1', resume=False)
+    assert 'start_position' not in client.session.sent[2][2]
+    assert mgr.pending.resume_to is None and mgr.pending.rewind_target(0) is None
+
+
+def test_resume_position_never_goes_before_the_start():
+    assert playback.resume_position(2.0, 3) == 0.0
+    assert playback.resume_position(100.0, None) == 100.0
+    assert playback.resume_position(100.0, -4) == 100.0
+
+
+def test_rewind_target_seeks_back_from_kodis_own_resume_point():
+    session = playback.Session(None, 'i', 's', 'c', {})
+    session.resume_to = 1322.0
+    assert session.rewind_target(1325.0) == 1322.0  # Kodi jumped to its bookmark
+    assert session.rewind_target(1322.4) is None  # already there: no seek
+    # A converted stream counts from its origin and already starts at resume_to.
+    hls = playback.Session(None, 'i', 's', 'c', {'timeline': {'stream_origin_seconds': 1322.0}})
+    hls.resume_to = 1322.0
+    assert hls.rewind_target(0) is None
 
 
 def test_sidecars_are_named_for_kodi(store):

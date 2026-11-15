@@ -411,18 +411,20 @@ def test_the_dolby_vision_badge_names_its_profile():
     from resources.lib.silokodi import mapping
     details = {'streamdetails': {'video': [{'width': 3840, 'height': 2160, 'hdrtype': 'dolbyvision'}], 'audio': []},
                'art': {'silodv': '7'}}
+    # The profile comes apart from the badge: a skin joins them (Skyline, when its option is on).
     props = mapping.skyline_properties('movie', details)
-    assert props['silo.badge2'] == 'DOLBY VISION 7' and props['silo.dv'] == '7'
+    assert props['silo.badge2'] == 'DOLBY VISION' and props['silo.dv'] == '7'
     # As Kodi's JSON-RPC gives the entry back: an image:// address around the text.
     kodi_form = dict(details, art={'silodv': 'image://7/'})
-    assert mapping.skyline_properties('movie', kodi_form)['silo.badge2'] == 'DOLBY VISION 7'
+    assert mapping.skyline_properties('movie', kodi_form)['silo.dv'] == '7'
     hdr10 = dict(details, streamdetails={'video': [{'width': 3840, 'height': 2160, 'hdrtype': 'hdr10'}], 'audio': []})
     assert mapping.skyline_properties('movie', hdr10)['silo.badge2'] == 'HDR10'
     assert mapping.dv_profile({'video_tracks': [{'dv_profile': 7, 'dv_bl_compat_id': 6}]}) == '7.6'
     assert mapping.dv_profile({'video_tracks': [{'dv_profile': 8, 'dv_bl_compat_id': 1}]}) == '8.1'
     assert mapping.dv_profile({'video_tracks': [{'dv_profile': 5}]}) == '5'
-    # The info page's Version line names it too.
+    # The info page's Version line ends with the format's name, for a skin to add the profile after.
     assert mapping.skyline_properties('movie', dict(details, art={'silodv': '7.6'}))['silo.version'] \
-        == '4K · Dolby Vision 7.6'
+        == '4K · Dolby Vision'
+    assert mapping.tech_lines(details['streamdetails'], '7.6')['silo.version'] == '4K · Dolby Vision 7.6'
     assert mapping.dv_profile({'video_tracks': [{'codec': 'hevc'}]}) == ''
     assert mapping.dv_profile(None) == ''

@@ -51,7 +51,7 @@ NEXT_EPISODE = 'Next Episode'
 CARDS = 20  # cards per row; Silo's rows go up to 50 (most hold 13-20), and each costs a skin's load time
 FIELDS = ('type', 'dbid', 'label', 'card.title', 'card.sub', 'card.wide_sub', 'hero.title', 'hero.meta',
           'hero.facts', 'rating.imdb', 'rating.tmdb', 'rating.rtcritic',
-          'hero.detail', 'plot', 'mpaa', 'badge1', 'badge2', 'badge3', 'tint', 'percent', 'playcount', 'new', 'left', 'dismiss', 'rank', 'place',
+          'hero.detail', 'plot', 'mpaa', 'badge1', 'badge2', 'badge3', 'dv', 'tint', 'percent', 'playcount', 'new', 'left', 'dismiss', 'rank', 'place',
           'art.poster', 'art.landscape', 'art.fanart', 'art.clearlogo', 'request.type', 'request.tmdb',
           'status.tint', 'status.seg1', 'status.seg2', 'status.seg3', 'status.seg4',
           'request.library', 'request.state', 'request.more', 'request.logo', 'request.from', 'request.to',
@@ -95,6 +95,8 @@ def card(kind, details, show=None, tint='', landscape=''):
         'mpaa': props.get('silo.mpaa', ''),
         'badge1': props.get('silo.badge1', ''), 'badge2': props.get('silo.badge2', ''),
         'badge3': props.get('silo.badge3', ''), 'tint': tint or '',
+        # Dolby Vision's profile, apart: a skin adds it to the badge if it wants (DOLBY VISION 7.6).
+        'dv': props.get('silo.dv', ''),
         'percent': str(percent) if percent else '', 'playcount': watched_mark(kind, details),
         # Netflix's marks: a show's new episode, a part-watched title's time left.
         'new': props.get('silo.new', ''), 'left': props.get('silo.left', ''),

@@ -90,6 +90,19 @@
           </constraints>
           <control type="list" format="string"/>
         </setting>
+        <setting id="resume_back" type="integer" label="30235" help="30236">
+          <level>0</level>
+          <default>3</default>
+          <constraints>
+            <options>
+              <option label="30237">0</option>
+              <option label="30238">3</option>
+              <option label="30239">5</option>
+              <option label="30240">10</option>
+            </options>
+          </constraints>
+          <control type="list" format="integer"/>
+        </setting>
       </group>
       <group id="2">
         <setting id="theme_music" type="boolean" label="30192" help="30193">

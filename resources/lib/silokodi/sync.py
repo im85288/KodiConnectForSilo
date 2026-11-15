@@ -20,8 +20,9 @@ from .api import ApiError, SignedOut
 # meta key prefix: a title's details_fingerprint as last written by resync_item (quiet_unless_shown_changed)
 DETAILS_KEY = 'details:'
 # meta key prefix: a movie library whose films have been written with their Dolby Vision profile
-# in its current form (v2: with the compatibility number, 7.6); a new form writes them once more
-DV_BACKFILL = 'dv_profile_v2:'
+# in its current form (v2: with the compatibility number, 7.6; v3: badges kept without it, as
+# Skyline adds the profile only when its option is on); a new form writes them once more
+DV_BACKFILL = 'dv_profile_v3:'
 # meta key: Dolby Vision episodes whose details name no profile (fill_episode_profiles)
 DV_NONE = 'dv_none'
 EPISODE_DV_BATCH = 100  # episodes' details fetched and written per transaction

@@ -42,10 +42,20 @@ DYNAMIC_RANGE = {
 # SHIELD's hardware decoder refuses it and Kodi decodes 4K HEVC in software
 # until Android kills it for memory. Refuse such plans with an explanation.
 MAX_HLS_HEIGHT = 1080
+# A resumed title starts this much before where it was left (the Playback
+# setting resume_back, in seconds), as PlexMod for Kodi does: playback can
+# only begin on a keyframe, and a moment would otherwise be lost.
+DEFAULT_RESUME_BACK = 3
+REWIND_MIN = 1.0  # seconds: closer to the target than this, no seek is worth it
 
 
 class PlaybackError(Exception):
     pass
+
+
+def resume_position(position, back):
+    """The resume point moved back by back seconds, never before the start."""
+    return max(0.0, float(position) - max(0.0, float(back or 0)))
 
 
 def capabilities(version, max_resolution='1080p', dynamic_range='sdr'):
@@ -117,6 +127,20 @@ class Session(object):
         self.audio_track = None
         self.audio_count = 0
         self.audio_language = ''
+        # Where a resumed title should start, in the source's seconds: the
+        # resume point moved back a little (resume_position). None: from the start.
+        self.resume_to = None
+
+    def rewind_target(self, player_seconds):
+        """The player time to seek back to as a resumed title starts, or None.
+        Kodi jumps to its own copy of the resume point; a converted stream
+        already starts at resume_to (start_position), so needs nothing."""
+        if self.resume_to is None:
+            return None
+        target = max(0.0, self.resume_to - self.origin)
+        if float(player_seconds or 0) - target < REWIND_MIN:
+            return None
+        return target
 
     def source_position(self, player_seconds):
         return max(0.0, self.origin + float(player_seconds or 0))
@@ -209,8 +233,10 @@ class PlaybackManager(object):
             'client_capabilities': client_caps, 'client_playback_context': context,
         }
         position = mapping.play_state(item)[1]
+        resume_to = None
         if resume and position:
-            body['start_position'] = position
+            resume_to = resume_position(position, settings.get('resume_back', DEFAULT_RESUME_BACK))
+            body['start_position'] = resume_to
         decision = None
         for attempt in (1, 2):
             body['installation_id'] = self.capability(refresh=attempt == 2)['installation_id']
@@ -242,6 +268,7 @@ class PlaybackManager(object):
                                 'have to decode in software. If it is Dolby Vision from a UHD Blu-ray, set '
                                 'Playback > HDR to the profile 7 option.')
         session = Session(self.client, body['installation_id'], session_id, content_id, plan)
+        session.resume_to = resume_to
         # An episode's series: its remembered subtitle choice (subtitleprefs).
         session.series_id = item.get('series_id') if item.get('type') == 'episode' else None
         # The profile's subtitle rules as Silo resolves them for this title (library overrides included).

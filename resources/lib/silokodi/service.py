@@ -84,7 +84,7 @@ PUBLISHED_PAGES = {'home': 20, 'requests': 12}
 PUBLISHED_ROWS = {'home': 4, 'requests': 12}
 TV_REFRESH = 300  # seconds between the TV page's rows (Skyline): what's on, and live matches
 # The playing title's details for a skin's player (silokodi.playing.*).
-PLAYING_FIELDS = ('rating.imdb', 'rating.tmdb', 'rating.rtcritic', 'badge1', 'badge2', 'badge3', 'mpaa',
+PLAYING_FIELDS = ('rating.imdb', 'rating.tmdb', 'rating.rtcritic', 'badge1', 'badge2', 'badge3', 'dv', 'mpaa',
                   'air_date')
 # The playing episode's season and next episode, for the player's Episodes and
 # Next Episode buttons (upnext.player_episodes).
@@ -131,6 +131,7 @@ class Player(xbmc.Player):
         if session:
             self.last_time = None
             self.service.recently_played[session.content_id] = time.time()
+            self.rewind(session)
             self.service.tell_upnext(session)
             self.show_markers(session)
             self.service.publish_playing(session.content_id)
@@ -146,6 +147,16 @@ class Player(xbmc.Player):
 
     def onPlayBackError(self):
         self._ended()
+
+    def rewind(self, session):
+        """A resumed title: start a little before where it was left (Session.rewind_target)."""
+        try:
+            target = session.rewind_target(self.getTime())
+            if target is not None:
+                self.seekTime(target)
+                kodi.log('Resumed %s at %.1f s, a little before where it was left' % (session.content_id, target))
+        except RuntimeError:
+            pass
 
     def show_markers(self, session):
         """Silo's intro, recap, credits and preview markers for the skin's
@@ -870,6 +881,7 @@ class Service(object):
     def playback_settings(self):
         return {'max_resolution': kodi.setting('max_resolution') or '1080p',
                 'dynamic_range': kodi.setting('dynamic_range') or 'sdr',
+                'resume_back': kodi.setting_int('resume_back'),
                 'quality': 'auto'}
 
     def play(self, query):
