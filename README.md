@@ -200,6 +200,26 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.22.0 (2026-11-15)
+- **Early resume:** a resumed title starts a little before where it was left (Playback > Resume a little earlier:
+  Off, 3, 5 or 10 s; 3 by default, as PlexMod for Kodi), as playback can only begin on a keyframe. Direct play
+  seeks back after Kodi's own jump; a converted stream asks Silo for the earlier start. **Rewind a little when
+  unpausing** (off by default) does the same after a pause of more than 5 seconds.
+- **Sharp pictures for 4K menus:** Kodi caches posters at most 720 high and backgrounds 1080, so 4K menus showed
+  Silo's 4K pictures soft. With 4K menus the add-on offers once to raise `imageres`/`fanartres` (1440/2160, and
+  lanczos scaling) in `advancedsettings.xml`, keeping the rest of the file, never lowering a value, backing it up
+  first; it offers them back when the menus are HD again, and a settings button does either.
+- **A skin's settings, through the add-on:** `?mode=skin_state`, `skin_option`, `skin_choice` and `skin_reset`
+  let a skin switch this add-on's screensaver as Kodi's (putting the previous one back), Kodi's spoiler setting for
+  unwatched episodes, the screensaver delay, the theme volume, rewind on unpause and My teams, shown as skin
+  booleans and strings (Skyline 0.13.0).
+- **Theme music volume** (50% by default): Kodi's volume is lowered while a theme tune plays and put back as it
+  stops or anything else starts. The screensaver leaves out logos when the skin says.
+- **Dolby Vision profile apart:** badges and the Version line no longer carry it; it comes as `silo.dv` (and `dv`
+  on Home cards and what's playing) so a skin adds it at once when its option is on. Films are written once more.
+- **Episode pictures:** Home cards carry an episode's own picture (`art.still`) beside its show's.
+- **Requests:** a library title's background takes its poster's colour, not Silo's Available green.
+
 ### v0.21.4 (2026-11-14)
 - **Settings that stick:** Kodi's add-on settings screen saves its own copy of the settings when it closes, over
   anything saved while it was open. Sign-in (started from that screen) asked what the TV shows and saved the
