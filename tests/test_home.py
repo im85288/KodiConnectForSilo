@@ -360,3 +360,26 @@ def test_an_episode_card_carries_its_own_picture_beside_its_shows():
                            landscape='season.jpg')
     assert card['art.landscape'] == 'season.jpg' and card['art.still'] == 'still.jpg'
     assert home_cards.card('tvshow', dict(SHOW, art={'thumb': 'x.jpg'}))['art.still'] == ''
+
+
+def test_unpausing_a_silo_title_after_a_while_rewinds_a_little(monkeypatch):
+    seeks = []
+    player = service_module.Player.__new__(service_module.Player)
+    player.service = type('S', (), {'playback': type('P', (), {'active': object()})()})()
+    player.getTime = lambda: 600.0
+    player.seekTime = seeks.append
+    monkeypatch.setattr(service_module.kodi, 'setting_int', lambda key: 5 if key == 'unpause_back' else 0)
+    clock = [1000.0]
+    monkeypatch.setattr(service_module.time, 'time', lambda: clock[0])
+    player.onPlayBackPaused()
+    clock[0] += 2  # a quick pause: as it was
+    player.onPlayBackResumed()
+    player.onPlayBackPaused()
+    clock[0] += 60
+    player.onPlayBackResumed()
+    assert seeks == [595.0]
+    player.service.playback.active = None  # not a Silo title
+    player.onPlayBackPaused()
+    clock[0] += 60
+    player.onPlayBackResumed()
+    assert seeks == [595.0]

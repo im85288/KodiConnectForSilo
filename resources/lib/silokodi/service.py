@@ -31,6 +31,7 @@ from .personal import PersonalLists
 from .sync import FETCH_WORKERS, MAX_ROWS, MOVIE_LIBRARY_TYPES, NEXT_EPISODE_SECTIONS, SHOW_LIBRARY_TYPES, Stopped, Syncer, collection_cards, home_row_items, page_of, skin_layout
 from .syncdb import SyncDB
 
+UNPAUSE_MIN = 5  # seconds paused before unpausing rewinds (unpause_back): a quick pause doesn't
 BIG_ART_DELAY = 20  # seconds after start: the 4K picture sizes question waits for Home
 PROGRESS_POLL = 300          # seconds between resume-point checks while the socket is up
 PROGRESS_POLL_OFFLINE = 120  # ... and while it is down
@@ -126,6 +127,27 @@ class Player(xbmc.Player):
         xbmc.Player.__init__(self)
         self.service = service
         self.last_time = None
+        self.paused_at = None
+
+    def onPlayBackStarted(self):
+        # Anything starting (a film over a theme tune's page): Kodi's volume as it was.
+        self.service.theme.restore_volume()
+
+    def onPlayBackPaused(self):
+        self.paused_at = time.time()
+
+    def onPlayBackResumed(self):
+        """A Silo title unpaused after a while: back a few seconds (the
+        unpause_back setting), as PlexMod for Kodi does, to pick up the thread."""
+        paused_at, self.paused_at = self.paused_at, None
+        back = kodi.setting_int('unpause_back')
+        if not back or not self.service.playback.active or paused_at is None \
+                or time.time() - paused_at < UNPAUSE_MIN:
+            return
+        try:
+            self.seekTime(max(0.0, self.getTime() - back))
+        except RuntimeError:
+            pass
 
     def onAVStarted(self):
         session = self.service.playback.on_started()
@@ -293,7 +315,8 @@ class Service(object):
         # On in the add-on's settings and, under Skyline, its own skin setting (off: SkylineNoThemeMusic).
         self.theme = ThemePlayer(lambda: kodi.setting_bool('theme_music')
                                  and not xbmc.getCondVisibility('Skin.HasSetting(SkylineNoThemeMusic)'),
-                                 os.path.join(kodi.profile_dir(), 'themes'), log=kodi.log)
+                                 os.path.join(kodi.profile_dir(), 'themes'), log=kodi.log,
+                                 volume=lambda: kodi.setting_int('theme_volume') or 100)
         self.catchup = catchup.Rewriter()
         # Tasks in order, but Home's cards first: they show the viewer's own
         # changes (a title marked watched) and would otherwise wait behind a

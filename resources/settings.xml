@@ -90,6 +90,19 @@
           </constraints>
           <control type="list" format="string"/>
         </setting>
+        <setting id="unpause_back" type="integer" label="30251" help="30254">
+          <level>0</level>
+          <default>0</default>
+          <constraints>
+            <options>
+              <option label="30237">0</option>
+              <option label="30238">3</option>
+              <option label="30239">5</option>
+              <option label="30240">10</option>
+            </options>
+          </constraints>
+          <control type="list" format="integer"/>
+        </setting>
         <setting id="resume_back" type="integer" label="30235" help="30236">
           <level>0</level>
           <default>3</default>
@@ -109,6 +122,22 @@
           <level>0</level>
           <default>true</default>
           <control type="toggle"/>
+        </setting>
+        <setting id="theme_volume" type="integer" label="30252" help="30255" parent="theme_music">
+          <level>0</level>
+          <default>50</default>
+          <constraints>
+            <options>
+              <option label="30256">25</option>
+              <option label="30257">50</option>
+              <option label="30258">75</option>
+              <option label="30259">100</option>
+            </options>
+          </constraints>
+          <dependencies>
+            <dependency type="enable" setting="theme_music">true</dependency>
+          </dependencies>
+          <control type="list" format="integer"/>
         </setting>
         <setting id="choose_top10" type="action" label="30182" help="30184">
           <level>0</level>

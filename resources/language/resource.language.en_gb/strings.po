@@ -585,3 +585,43 @@ msgstr ""
 msgctxt "#30249"
 msgid "Kodi keeps posters and backgrounds in its cache smaller than 4K menus draw them, so they look soft. This raises the sizes in advancedsettings.xml (the rest of the file is kept), or puts them back. Kodi restarts to use them."
 msgstr ""
+
+msgctxt "#30250"
+msgid "Screensaver starts after"
+msgstr ""
+
+msgctxt "#30251"
+msgid "Rewind a little when unpausing"
+msgstr ""
+
+msgctxt "#30252"
+msgid "Theme music volume"
+msgstr ""
+
+msgctxt "#30253"
+msgid "Put every Skyline option back to how it came? Your menu items and Kodi's own settings stay as they are."
+msgstr ""
+
+msgctxt "#30254"
+msgid "After a pause of more than a few seconds, playback picks up this much earlier, so you don't lose the thread."
+msgstr ""
+
+msgctxt "#30255"
+msgid "How loud a show's theme tune plays, compared with Kodi's volume. Kodi's volume goes back as the tune stops or anything else plays."
+msgstr ""
+
+msgctxt "#30256"
+msgid "25%"
+msgstr ""
+
+msgctxt "#30257"
+msgid "50%"
+msgstr ""
+
+msgctxt "#30258"
+msgid "75%"
+msgstr ""
+
+msgctxt "#30259"
+msgid "100%"
+msgstr ""

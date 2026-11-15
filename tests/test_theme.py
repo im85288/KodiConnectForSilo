@@ -126,3 +126,27 @@ def test_an_episode_page_plays_its_shows_theme():
     host.offer_theme({'type': 'movie', 'content_id': 'movie-1'})
     assert [(a[0], a[2], a[3]) for a in offered] == [('series-tvdb-399917', 'The Terminal List', theme.EPISODE_RAIL),
                                                     ('series-tvdb-1', 'Show', theme.SHOW_RAIL)]
+
+
+def test_a_theme_plays_quieter_and_kodis_volume_comes_back():
+    from resources.lib.silokodi.theme import ThemePlayer
+
+    class Mixer(object):
+        level = 80
+
+        def get(self):
+            return self.level
+
+        def set(self, value):
+            self.level = value
+    mixer = Mixer()
+    player = ThemePlayer(lambda: True, '/tmp/x', volume=lambda: 50, mixer=mixer)
+    player.lower_volume()
+    assert mixer.level == 40
+    player.lower_volume()  # never lowered twice
+    assert mixer.level == 40
+    player.restore_volume()
+    assert mixer.level == 80 and player.restore_to is None
+    player.volume = lambda: 100
+    player.lower_volume()
+    assert mixer.level == 80 and player.restore_to is None  # full volume: left alone

@@ -31,10 +31,16 @@ AUDIO = ('.mp3', '.m4a')
 
 
 class ThemePlayer(object):
-    def __init__(self, enabled, folder, log=None):
+    def __init__(self, enabled, folder, log=None, volume=lambda: 100, mixer=None):
         self.enabled = enabled
         self.folder = folder
         self.log = log or (lambda message: None)
+        # The tune's loudness, a percentage of Kodi's volume (the theme_volume
+        # setting). Kodi has one volume, so it's lowered while the tune plays
+        # and put back as it stops or anything else starts (restore_volume).
+        self.volume = volume
+        self.mixer = mixer or KodiVolume()
+        self.restore_to = None
         self.missing = set()  # shows Silo has no theme for (asked again after a restart)
         self.url = None
         self.player = xbmc.Player()
@@ -110,6 +116,7 @@ class ThemePlayer(object):
                 return
             if self.player.isPlaying() and not self.playing_ours():
                 return  # the viewer's own playback
+            self.lower_volume()
             self.player.play(path, xbmcgui.ListItem('Theme'), True)
             self.url = path
 
@@ -142,12 +149,51 @@ class ThemePlayer(object):
             return False
 
     def tick(self):
-        """Called by the service about every second: the page has closed."""
+        """Called by the service about every second: the page has closed, or the tune ended."""
         if self.url and not xbmc.getCondVisibility(PAGE):
             self.stop()
+        elif self.restore_to is not None and not self.playing_ours():
+            self.restore_volume()
 
     def stop(self):
         with self.lock:
             if self.playing_ours():
                 self.player.stop()
             self.url = None
+            self.restore_volume()
+
+    def lower_volume(self):
+        percent = max(0, min(100, int(self.volume() or 100)))
+        if percent >= 100 or self.restore_to is not None:
+            return
+        current = self.mixer.get()
+        if current is None:
+            return
+        self.restore_to = current
+        self.mixer.set(int(round(current * percent / 100.0)))
+
+    def restore_volume(self):
+        """Kodi's volume as it was before the tune (the service calls this as any playback starts)."""
+        if self.restore_to is not None:
+            restore, self.restore_to = self.restore_to, None
+            self.mixer.set(restore)
+
+
+class KodiVolume(object):
+    """Kodi's volume, 0-100, through JSON-RPC."""
+
+    @staticmethod
+    def call(method, **params):
+        import json
+        answer = json.loads(xbmc.executeJSONRPC(json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': method,
+                                                            'params': params})))
+        return answer.get('result')
+
+    def get(self):
+        try:
+            return int((self.call('Application.GetProperties', properties=['volume']) or {}).get('volume'))
+        except (TypeError, ValueError):
+            return None
+
+    def set(self, value):
+        self.call('Application.SetVolume', volume=int(value))

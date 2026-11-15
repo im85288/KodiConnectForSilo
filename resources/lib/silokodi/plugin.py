@@ -92,6 +92,11 @@ def run(argv):
         # spoiler setting stand, or one switched (skinoptions).
         from . import skinoptions
         return skinoptions.toggle(params.get('name')) if mode == 'skin_option' else skinoptions.state()
+    if mode in ('skin_choice', 'skin_reset'):
+        # A skin's list of values for a setting (screensaver delay, rewind on
+        # unpause, theme volume, My teams), or all its options back to default.
+        from . import skinoptions
+        return skinoptions.choose(params.get('name')) if mode == 'skin_choice' else skinoptions.reset()
     if mode == 'previous':
         return play_previous(params.get('dbid'))
     if mode == 'show':
