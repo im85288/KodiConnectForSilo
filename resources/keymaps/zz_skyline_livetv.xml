@@ -2,8 +2,10 @@
 <!-- Silo Skyline: Live TV keys as TiviMate's. Copy to userdata/keymaps/ (named to
      load after other keymaps, which it overrides only for these keys):
        OK         the recently watched channels (Skyline's window 1196)
-       Up / Down  the channel above or below, as in the guide (Kodi's Channel
-                  Down / Up: lower and higher numbers)
+       Up / Down  the channel above or below, as in the guide (lower and higher
+                  numbers). Kodi's Down / Up actions: with Kodi's "Confirm channel
+                  switch" on (its default) they browse channels in the banner and OK
+                  watches the one shown, as Sky's mini guide; off, they switch at once
        Left       the quick guide (Kodi's channel list over the video)
        Right      the channel watched before this one (KodiConnectForSilo) -->
 <keymap>
@@ -11,15 +13,15 @@
     <keyboard>
       <return>ActivateWindow(1196)</return>
       <enter>ActivateWindow(1196)</enter>
-      <up>ChannelDown</up>
-      <down>ChannelUp</down>
+      <up>Down</up>
+      <down>Up</down>
       <left>ActivateWindow(PVROSDChannels)</left>
       <right>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=previous_channel)</right>
     </keyboard>
     <remote>
       <select>ActivateWindow(1196)</select>
-      <up>ChannelDown</up>
-      <down>ChannelUp</down>
+      <up>Down</up>
+      <down>Up</down>
       <left>ActivateWindow(PVROSDChannels)</left>
       <right>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=previous_channel)</right>
     </remote>
