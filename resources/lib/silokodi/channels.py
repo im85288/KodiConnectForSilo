@@ -179,17 +179,26 @@ def around_now(rows, before=2):
     return ([rows[header]] + picked) if header is not None and header < start else picked
 
 
-def grid_cells(rows):
+SLOT = 30 * 60  # a column of Skyline's mini guide grid
+
+
+def grid_slots(rows, starts, now):
     """A channel's programmes for Skyline's mini guide grid (long OK in Live
-    TV): {'prev', 'now', 'next', 'later'}, each a schedule row or None. prev
-    only when catch-up can play it; with nothing on now, next is the first
-    to come."""
+    TV), one per column starting at each of starts (epoch seconds): the one
+    on at the column's start (in the column holding now, the one on now),
+    else the first to start within it, else None. Each found is the schedule
+    row with 'cont' when it carries on from the column before."""
     shows = [row for row in rows if not row.get('header')]
-    at = next((i for i, row in enumerate(shows) if row['when'] != 'past'), len(shows))
-    on = shows[at] if at < len(shows) and shows[at]['when'] == 'now' else None
-    after = shows[at + 1 if on else at:]
-    prev = shows[at - 1] if at and shows[at - 1].get('archive') else None
-    return {'prev': prev, 'now': on, 'next': after[0] if after else None, 'later': after[1] if len(after) > 1 else None}
+    found, before = [], None
+    for start in starts:
+        moment = now if start <= now < start + SLOT else start
+        row = next((r for r in shows if r['start'] <= moment < r['end']), None) or \
+            next((r for r in shows if start <= r['start'] < start + SLOT), None)
+        if row:
+            row = dict(row, cont=before is not None and before.get('broadcastid') == row.get('broadcastid'))
+        found.append(row)
+        before = row
+    return found
 
 
 def find_channel(number, name, found=None):
@@ -211,13 +220,20 @@ def utc_seconds(stamp):
     return calendar.timegm(tuple(int(part) for part in day.split('-') + (clock or '0:0:0').split(':')) + (0, 0, 0))
 
 
-def channel_schedule(channel, now=None):
-    """The channel's programmes as schedule_rows, from Kodi's guide."""
+def channel_broadcasts(channel):
+    """The channel's programmes from Kodi's guide, with start and end as epoch seconds."""
     broadcasts = (kodi.jsonrpc('PVR.GetBroadcasts', channelid=channel['channelid'],
                                properties=['title', 'starttime', 'endtime', 'plot'])
                   or {}).get('broadcasts') or []
     for broadcast in broadcasts:
         broadcast['start'], broadcast['end'] = (utc_seconds(broadcast[key]) for key in ('starttime', 'endtime'))
+    return broadcasts
+
+
+def channel_schedule(channel, now=None, broadcasts=None):
+    """The channel's programmes as schedule_rows, from Kodi's guide."""
+    if broadcasts is None:
+        broadcasts = channel_broadcasts(channel)
     return schedule_rows(broadcasts, now or time.time(), bool(channel.get('hasarchive')))
 
 

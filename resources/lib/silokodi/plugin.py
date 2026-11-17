@@ -5,6 +5,7 @@ The plugin runs in a short-lived process per call. Everything that needs the
 Silo session goes through the service's loopback relay.
 """
 import json
+import os
 import time
 
 try:
@@ -20,7 +21,7 @@ import xbmcplugin
 # Kept light: Kodi starts a fresh Python for every play and widget refresh,
 # and on a 2 GB device the ~7 MB that requests costs is worth saving. Sign-in
 # code (which needs requests) is imported only when used.
-from . import channels, display, kodi, mapping, tracks
+from . import channels, display, fileio, kodi, mapping, tracks
 from . import rows as home_cards
 from .library import CAST_LIMIT, details_of
 from .mapping import RELAY_PORT as DEFAULT_PORT
@@ -153,7 +154,11 @@ def run(argv):
     if mode == 'mini_grid':
         # The playing group from Kodi itself: a name like "UK | Sky Sports" can't go in
         # the path, as Kodi takes what follows a | for the address's options.
-        return mini_grid(handle, params.get('number'), xbmc.getInfoLabel('VideoPlayer.ChannelGroup'))
+        shift = params.get('shift') or '0'
+        return mini_grid(handle, params.get('number'), xbmc.getInfoLabel('VideoPlayer.ChannelGroup'),
+                         int(shift) if shift.lstrip('-').isdigit() else 0, params.get('focus'))
+    if mode == 'mini_shift':
+        return mini_shift(params.get('dir'), params.get('focus'))
     if mode == 'schedule_days':
         return schedule_days(handle, params.get('number'), raw_tail(argv, 'name'))
     if mode == 'play_broadcast':
@@ -392,44 +397,100 @@ def schedule(base, handle, number, name, full=False):
 
 
 GRID_FIELDS = ['channelnumber', 'icon', 'hidden', 'hasarchive']
-GRID_SPAN = 40  # in a big group, programmes for this many channels either side of the one it opens on
+GRID_SPAN = 40       # in a big group, programmes for this many channels either side of the focused one
+GRID_COLUMNS = 4
+GRID_SHIFTS = (-48, 96)  # how far the grid moves: a day back (catch-up), two ahead, in columns
+GRID_CACHE_SECONDS = 300  # the guide kept between the grid's moves
 
 
-def mini_grid(handle, number, group, now=None):
+def mini_grid(handle, number, group, shift=0, focus=None, now=None):
     """Skyline's mini guide (long OK in Live TV, as Sky's): the playing group's
-    channels, each with its programmes on now, next and later, and the one
-    before when catch-up can play it, as silo.<prev|now|next|later>.<title|
-    times|timeline|plot|broadcastid> (silo.now.left: its minutes left).
-    silokodi.mini_now is the row of the channel it opens on (number) and
-    silokodi.mini_for that number, for the skin to focus it once loaded."""
+    channels, each with the programme in each of four half-hour columns from
+    the current half hour (moved by shift columns), as silo.c<n>.<title|times|
+    timeline|plot|broadcastid|when|archive|cont> (silo.c<n>.left: minutes left
+    on the one on now). silokodi.mini_head<n> are the columns' times;
+    silokodi.mini_now is the row of the focused channel (focus, else number)
+    and silokodi.mini_for the number, for the skin to focus it once loaded."""
     now = now or time.time()
     found = [c for c in group_channels(group, GRID_FIELDS) or tv_channels(GRID_FIELDS) if not c.get('hidden')]
-    start = next((i for i, c in enumerate(found) if str(c.get('channelnumber')) == str(number or '').strip()), 0)
+    focus = str(focus or number or '').strip()
+    at_row = next((i for i, c in enumerate(found) if str(c.get('channelnumber')) == focus), 0)
+    first = int(now // channels.SLOT) * channels.SLOT + shift * channels.SLOT
+    starts = [first + n * channels.SLOT for n in range(GRID_COLUMNS)]
     clock = xbmc.getRegion('time').replace(':%S', '')
+    today = time.localtime(now)[:3]
 
-    def at(epoch):
-        return time.strftime(clock, time.localtime(epoch)).lstrip('0')
+    def at(epoch, day=False):
+        text = time.strftime(clock, time.localtime(epoch)).lstrip('0')
+        return (time.strftime('%a ', time.localtime(epoch)) + text) if day and time.localtime(epoch)[:3] != today else text
+    cache = _grid_cache(now)
     for index, channel in enumerate(found):
         props = {'silo.channelid': str(channel['channelid']), 'silo.number': str(channel.get('channelnumber') or ''),
                  'silo.archive': '1' if channel.get('hasarchive') else ''}
-        if len(found) <= 2 * GRID_SPAN or abs(index - start) <= GRID_SPAN:
-            for name, row in channels.grid_cells(channels.channel_schedule(channel, now)).items():
+        if len(found) <= 2 * GRID_SPAN or abs(index - at_row) <= GRID_SPAN:
+            key = str(channel['channelid'])
+            if key not in cache['channels']:
+                cache['channels'][key] = channels.channel_broadcasts(channel)
+            rows = channels.channel_schedule(channel, now, [dict(b) for b in cache['channels'][key]])
+            for column, row in enumerate(channels.grid_slots(rows, starts, now)):
                 if not row:
                     continue
-                props.update({'silo.%s.title' % name: row['title'], 'silo.%s.plot' % name: row['plot'],
-                              'silo.%s.times' % name: '%s – %s' % (at(row['start']), at(row['end'])),
-                              'silo.%s.timeline' % name: '%s, %s – %s' % (channels.day_label(row['date']),
-                                                                         at(row['start']), at(row['end'])),
-                              'silo.%s.broadcastid' % name: str(row['broadcastid'])})
-                if name == 'now':
-                    props['silo.now.left'] = str(max(1, int((row['end'] - now) // 60)))
+                c = 'silo.c%d.' % column
+                props.update({c + 'title': row['title'], c + 'plot': row['plot'], c + 'when': row['when'],
+                              c + 'times': '%s – %s' % (at(row['start']), at(row['end'])),
+                              c + 'timeline': '%s, %s – %s' % (channels.day_label(row['date']), at(row['start']), at(row['end'])),
+                              c + 'broadcastid': str(row['broadcastid']), c + 'archive': '1' if row.get('archive') else '',
+                              c + 'cont': '1' if row['cont'] else ''})
+                if row['when'] == 'now':
+                    props[c + 'left'] = str(max(1, int((row['end'] - now) // 60)))
         item = xbmcgui.ListItem(channel.get('label') or '', offscreen=True)
         item.setArt({'icon': channel.get('icon') or '', 'thumb': channel.get('icon') or ''})
         item.setProperties(props)
         xbmcplugin.addDirectoryItem(handle, '', item, isFolder=False)
-    kodi.set_property('mini_now', str(start))
+    _grid_cache(now, cache)
+    for column, start in enumerate(starts):
+        kodi.set_property('mini_head%d' % column, 'Now' if start <= now < start + channels.SLOT else at(start, day=True))
+    kodi.set_property('mini_now', str(at_row))
     kodi.set_property('mini_for', str(number or '').strip())
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+def _grid_cache(now, cache=None):
+    """The guide as the mini guide last read it (Kodi's guide for each channel,
+    by id), read back while under GRID_CACHE_SECONDS old, so moving the grid
+    along doesn't ask Kodi again; with cache, saved."""
+    path = os.path.join(kodi.profile_dir(), 'mini_guide.json')
+    if cache is not None:
+        try:
+            fileio.write_atomic(path, json.dumps(cache))
+        except (IOError, OSError):
+            pass
+        return cache
+    try:
+        with open(path, encoding='utf-8') as handle:
+            saved = json.load(handle)
+        if 0 <= now - saved.get('at', 0) < GRID_CACHE_SECONDS:
+            return saved
+    except (IOError, OSError, ValueError):
+        pass
+    return {'at': now, 'channels': {}}
+
+
+def mini_shift(direction, focus):
+    """Left past the grid's first column or Right past its last: the grid moves
+    a half hour (within GRID_SHIFTS), keeping focus on the channel it was on."""
+    home = kodi.HOME
+    try:
+        shift = int(home.getProperty('silo.mini.shift') or 0)
+    except ValueError:
+        shift = 0
+    moved = max(GRID_SHIFTS[0], min(GRID_SHIFTS[1], shift + (-1 if direction == '-1' else 1)))
+    if moved == shift:
+        return
+    home.setProperty('silo.mini.shift', str(moved))
+    home.setProperty('silo.mini.focus', str(focus or ''))
+    home.clearProperty('silo.mini.placed')
+    kodi.clear_property('mini_for')
 
 
 def group_channels(label, fields=None):

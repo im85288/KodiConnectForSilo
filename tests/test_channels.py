@@ -111,22 +111,14 @@ def test_a_preview_isnt_watching(tmp_path, monkeypatch):
     assert channels.without_previews({7: 1100, 8: 1001}, channels.load_previews()) == {7: 1100}
 
 
-def test_the_mini_guide_grid_has_earlier_now_next_and_later():
-    rows, _ = _schedule()
-    cells = channels.grid_cells(rows)
-    assert {k: v and v['title'] for k, v in cells.items()} == {
-        'prev': 'Desk', 'now': 'Football', 'next': 'Tomorrow', 'later': None}
-
-
-def test_without_catch_up_or_with_nothing_on_now():
-    import datetime
-    day = lambda d, h: datetime.datetime(2026, 10, d, h).timestamp()
-    broadcasts = [{'broadcastid': 1, 'title': 'Desk', 'start': day(28, 16), 'end': day(28, 19)},
-                  {'broadcastid': 2, 'title': 'Football', 'start': day(28, 19), 'end': day(28, 22)},
-                  {'broadcastid': 3, 'title': 'Late', 'start': day(28, 22), 'end': day(28, 23)},
-                  {'broadcastid': 4, 'title': 'Night', 'start': day(28, 23), 'end': day(29, 1)}]
-    cells = channels.grid_cells(channels.schedule_rows(broadcasts, day(28, 20), archive=False))
-    assert {k: v and v['title'] for k, v in cells.items()} == {'prev': None, 'now': 'Football', 'next': 'Late', 'later': 'Night'}
-    # A gap before the next programme: nothing on now, next the first to come.
-    cells = channels.grid_cells(channels.schedule_rows(broadcasts[2:], day(28, 20), archive=False))
-    assert {k: v and v['title'] for k, v in cells.items()} == {'prev': None, 'now': None, 'next': 'Late', 'later': 'Night'}
+def test_the_mini_guide_grid_shows_what_is_on_in_each_half_hour():
+    rows, day = _schedule()
+    half = channels.SLOT
+    # Columns from 18:00: Desk, then Football from 19:00 carrying on, and the column holding
+    # now (20:00) shows the one on now.
+    found = channels.grid_slots(rows, [day(28, 18) + n * half for n in range(5)], now=day(28, 20) + 600)
+    assert [(r['title'], r['cont']) for r in found] == [
+        ('Desk', False), ('Desk', True), ('Football', False), ('Football', True), ('Football', True)]
+    # Past a programme's end, a column's first programme to start in it; none: None.
+    assert channels.grid_slots(rows, [day(28, 23), day(29, 9)], now=day(28, 20)) == [None, dict(
+        next(r for r in rows if r.get('title') == 'Tomorrow'), cont=False)]
