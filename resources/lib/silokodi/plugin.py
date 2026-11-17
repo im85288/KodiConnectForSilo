@@ -408,7 +408,7 @@ def mini_grid(handle, number, group, shift=0, focus=None, now=None):
     channels, each with the programme in each of four half-hour columns from
     the current half hour (moved by shift columns), as silo.c<n>.<title|times|
     timeline|plot|broadcastid|when|archive|cont> (silo.c<n>.left: minutes left
-    on the one on now). silokodi.mini_head<n> are the columns' times;
+    on the one on now; silo.playing: the channel playing). silokodi.mini_head<n> are the columns' times;
     silokodi.mini_now is the row of the focused channel (focus, else number)
     and silokodi.mini_for the number, for the skin to focus it once loaded."""
     now = now or time.time()
@@ -424,9 +424,12 @@ def mini_grid(handle, number, group, shift=0, focus=None, now=None):
         text = time.strftime(clock, time.localtime(epoch)).lstrip('0')
         return (time.strftime('%a ', time.localtime(epoch)) + text) if day and time.localtime(epoch)[:3] != today else text
     cache = _grid_cache(now)
+    # Marked here: in a list's rows Kodi reads VideoPlayer.* against the row's own item.
+    playing = playing_channel()
     for index, channel in enumerate(found):
         props = {'silo.channelid': str(channel['channelid']), 'silo.number': str(channel.get('channelnumber') or ''),
-                 'silo.archive': '1' if channel.get('hasarchive') else ''}
+                 'silo.archive': '1' if channel.get('hasarchive') else '',
+                 'silo.playing': '1' if channel['channelid'] == playing else ''}
         if len(found) <= 2 * GRID_SPAN or abs(index - at_row) <= GRID_SPAN:
             key = str(channel['channelid'])
             if key not in cache['channels']:

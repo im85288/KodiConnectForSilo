@@ -55,6 +55,7 @@ def _grid(monkeypatch, tmp_path):
 
 def test_the_grid_lists_the_group_in_half_hours_from_now(monkeypatch, tmp_path):
     listed, published, fetched = _grid(monkeypatch, tmp_path)
+    monkeypatch.setattr(plugin, 'playing_channel', lambda: 9)
     plugin.mini_grid(1, '20', 'UK | Sky Sports', now=day(20.5) + 300)
     assert [i.label for i in listed] == ['News', 'Plus']           # the hidden channel left out
     news, plus = (i.props for i in listed)
@@ -62,6 +63,7 @@ def test_the_grid_lists_the_group_in_half_hours_from_now(monkeypatch, tmp_path):
     assert news['silo.c0.when'] == 'now' and news['silo.c0.left'] == '85' and news['silo.c1.cont'] == '1'
     assert [plus.get('silo.c%d.title' % n) for n in range(4)] == ['Cricket', 'Golf', 'Golf', 'Golf']
     assert listed[1].art['icon'] == 'p.png'
+    assert (news['silo.playing'], plus['silo.playing']) == ('', '1')   # marked by the add-on
     assert [published['mini_head%d' % n] for n in range(4)] == ['Now', '21:00', '21:30', '22:00']
     assert (published['mini_now'], published['mini_for']) == ('1', '20')   # opens on channel 20
 
