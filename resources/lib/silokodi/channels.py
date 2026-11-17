@@ -179,14 +179,17 @@ def around_now(rows, before=2):
     return ([rows[header]] + picked) if header is not None and header < start else picked
 
 
-def mini_rows(rows, past=6, ahead=12):
-    """The rows for Skyline's mini guide (long OK in Live TV, as Sky's): no
-    day headers; a few programmes before the one on now when catch-up can
-    play them, the one on now, then the next few."""
+def grid_cells(rows):
+    """A channel's programmes for Skyline's mini guide grid (long OK in Live
+    TV): {'prev', 'now', 'next', 'later'}, each a schedule row or None. prev
+    only when catch-up can play it; with nothing on now, next is the first
+    to come."""
     shows = [row for row in rows if not row.get('header')]
-    now = next((i for i, row in enumerate(shows) if row['when'] != 'past'), len(shows))
-    before = [row for row in shows[:now] if row.get('archive')][-past:] if past else []
-    return before + shows[now:now + 1 + ahead]
+    at = next((i for i, row in enumerate(shows) if row['when'] != 'past'), len(shows))
+    on = shows[at] if at < len(shows) and shows[at]['when'] == 'now' else None
+    after = shows[at + 1 if on else at:]
+    prev = shows[at - 1] if at and shows[at - 1].get('archive') else None
+    return {'prev': prev, 'now': on, 'next': after[0] if after else None, 'later': after[1] if len(after) > 1 else None}
 
 
 def find_channel(number, name, found=None):

@@ -111,19 +111,22 @@ def test_a_preview_isnt_watching(tmp_path, monkeypatch):
     assert channels.without_previews({7: 1100, 8: 1001}, channels.load_previews()) == {7: 1100}
 
 
-def test_the_mini_guide_shows_catch_up_then_now_and_what_follows():
+def test_the_mini_guide_grid_has_earlier_now_next_and_later():
     rows, _ = _schedule()
-    # Catch-up channel: the playable programmes before now, without day headers.
-    assert [r['title'] for r in channels.mini_rows(rows)] == [
-        'Late', 'Breakfast', 'Cricket', 'Desk', 'Football', 'Tomorrow']
-    assert [r['title'] for r in channels.mini_rows(rows, past=2, ahead=1)] == ['Cricket', 'Desk', 'Football', 'Tomorrow']
+    cells = channels.grid_cells(rows)
+    assert {k: v and v['title'] for k, v in cells.items()} == {
+        'prev': 'Desk', 'now': 'Football', 'next': 'Tomorrow', 'later': None}
 
 
-def test_without_catch_up_the_mini_guide_starts_on_now():
+def test_without_catch_up_or_with_nothing_on_now():
     import datetime
     day = lambda d, h: datetime.datetime(2026, 10, d, h).timestamp()
     broadcasts = [{'broadcastid': 1, 'title': 'Desk', 'start': day(28, 16), 'end': day(28, 19)},
                   {'broadcastid': 2, 'title': 'Football', 'start': day(28, 19), 'end': day(28, 22)},
-                  {'broadcastid': 3, 'title': 'Late', 'start': day(28, 22), 'end': day(28, 23)}]
-    rows = channels.schedule_rows(broadcasts, day(28, 20), archive=False)
-    assert [r['title'] for r in channels.mini_rows(rows)] == ['Football', 'Late']
+                  {'broadcastid': 3, 'title': 'Late', 'start': day(28, 22), 'end': day(28, 23)},
+                  {'broadcastid': 4, 'title': 'Night', 'start': day(28, 23), 'end': day(29, 1)}]
+    cells = channels.grid_cells(channels.schedule_rows(broadcasts, day(28, 20), archive=False))
+    assert {k: v and v['title'] for k, v in cells.items()} == {'prev': None, 'now': 'Football', 'next': 'Late', 'later': 'Night'}
+    # A gap before the next programme: nothing on now, next the first to come.
+    cells = channels.grid_cells(channels.schedule_rows(broadcasts[2:], day(28, 20), archive=False))
+    assert {k: v and v['title'] for k, v in cells.items()} == {'prev': None, 'now': None, 'next': 'Late', 'later': 'Night'}

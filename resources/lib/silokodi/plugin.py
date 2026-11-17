@@ -149,11 +149,11 @@ def run(argv):
         return forget_channel(params.get('id'))
     if mode == 'schedule':
         # The name as the skin wrote it (it can't URL-encode one), last in the path.
-        if params.get('mini') == '1':
-            return mini_schedule(handle, params.get('number'), raw_tail(argv, 'name'))
         return schedule(base, handle, params.get('number'), raw_tail(argv, 'name'), params.get('full') == '1')
-    if mode == 'mini_step':
-        return mini_step(params.get('dir'), raw_tail(argv, 'group'))
+    if mode == 'mini_grid':
+        # The playing group from Kodi itself: a name like "UK | Sky Sports" can't go in
+        # the path, as Kodi takes what follows a | for the address's options.
+        return mini_grid(handle, params.get('number'), xbmc.getInfoLabel('VideoPlayer.ChannelGroup'))
     if mode == 'schedule_days':
         return schedule_days(handle, params.get('number'), raw_tail(argv, 'name'))
     if mode == 'play_broadcast':
@@ -298,8 +298,8 @@ def choose_top10():
 CHANNEL_FIELDS = ['channelnumber', 'icon', 'broadcastnow', 'hidden']
 
 
-def tv_channels():
-    return (kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=CHANNEL_FIELDS)
+def tv_channels(fields=None):
+    return (kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=fields or CHANNEL_FIELDS)
             or {}).get('channels') or []
 
 
@@ -391,51 +391,54 @@ def schedule(base, handle, number, name, full=False):
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
 
 
-def mini_schedule(handle, number, name, now=None):
-    """A channel's programmes for Skyline's mini guide (channels.mini_rows),
-    each with silo.left (minutes left on the one on now) beside the schedule's
-    properties. silokodi.mini_now is the row on now and silokodi.mini_for the
-    channel's number, for the skin to focus it once this channel's arrive."""
-    channel = channels.find_channel(number, name)
+GRID_FIELDS = ['channelnumber', 'icon', 'hidden', 'hasarchive']
+GRID_SPAN = 40  # in a big group, programmes for this many channels either side of the one it opens on
+
+
+def mini_grid(handle, number, group, now=None):
+    """Skyline's mini guide (long OK in Live TV, as Sky's): the playing group's
+    channels, each with its programmes on now, next and later, and the one
+    before when catch-up can play it, as silo.<prev|now|next|later>.<title|
+    times|timeline|plot|broadcastid> (silo.now.left: its minutes left).
+    silokodi.mini_now is the row of the channel it opens on (number) and
+    silokodi.mini_for that number, for the skin to focus it once loaded."""
     now = now or time.time()
-    rows = channels.mini_rows(channels.channel_schedule(channel, now)) if channel else []
+    found = [c for c in group_channels(group, GRID_FIELDS) or tv_channels(GRID_FIELDS) if not c.get('hidden')]
+    start = next((i for i, c in enumerate(found) if str(c.get('channelnumber')) == str(number or '').strip()), 0)
     clock = xbmc.getRegion('time').replace(':%S', '')
-    focus = 0
-    for index, ((label, label2, props), row) in enumerate(zip(channels.items(rows, channel, clock), rows)):
-        if row['when'] == 'now':
-            focus = index
-            props['silo.left'] = str(max(1, int((row['end'] - now) // 60)))
-        item = xbmcgui.ListItem(label, label2, offscreen=True)
+
+    def at(epoch):
+        return time.strftime(clock, time.localtime(epoch)).lstrip('0')
+    for index, channel in enumerate(found):
+        props = {'silo.channelid': str(channel['channelid']), 'silo.number': str(channel.get('channelnumber') or ''),
+                 'silo.archive': '1' if channel.get('hasarchive') else ''}
+        if len(found) <= 2 * GRID_SPAN or abs(index - start) <= GRID_SPAN:
+            for name, row in channels.grid_cells(channels.channel_schedule(channel, now)).items():
+                if not row:
+                    continue
+                props.update({'silo.%s.title' % name: row['title'], 'silo.%s.plot' % name: row['plot'],
+                              'silo.%s.times' % name: '%s – %s' % (at(row['start']), at(row['end'])),
+                              'silo.%s.timeline' % name: '%s, %s – %s' % (channels.day_label(row['date']),
+                                                                         at(row['start']), at(row['end'])),
+                              'silo.%s.broadcastid' % name: str(row['broadcastid'])})
+                if name == 'now':
+                    props['silo.now.left'] = str(max(1, int((row['end'] - now) // 60)))
+        item = xbmcgui.ListItem(channel.get('label') or '', offscreen=True)
+        item.setArt({'icon': channel.get('icon') or '', 'thumb': channel.get('icon') or ''})
         item.setProperties(props)
         xbmcplugin.addDirectoryItem(handle, '', item, isFolder=False)
-    kodi.set_property('mini_now', str(focus))
+    kodi.set_property('mini_now', str(start))
     kodi.set_property('mini_for', str(number or '').strip())
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
 
 
-def mini_step(direction, group):
-    """Up or Down in Skyline's mini guide: the channel above or below the one
-    it shows (Window(Home).Property(silo.mini.number)) in the playing group,
-    in the guide's order, wrapping round; the skin's properties name it."""
-    channels_in = [c for c in group_channels(group) or tv_channels() if not c.get('hidden')]
-    if not channels_in:
-        return
-    number = kodi.HOME.getProperty('silo.mini.number')
-    at = next((i for i, c in enumerate(channels_in) if str(c.get('channelnumber')) == number), 0)
-    channel = channels_in[(at + (-1 if direction == '-1' else 1)) % len(channels_in)]
-    for key, value in (('number', str(channel.get('channelnumber') or '')), ('name', channel.get('label') or ''),
-                       ('logo', channel.get('icon') or ''), ('channelid', str(channel['channelid']))):
-        kodi.HOME.setProperty('silo.mini.%s' % key, value)
-    kodi.HOME.clearProperty('silo.mini.placed')  # focus its programme on now once it loads
-
-
-def group_channels(label):
+def group_channels(label, fields=None):
     """A TV channel group's channels by its name (VideoPlayer.ChannelGroup), in its order."""
     groups = (kodi.jsonrpc('PVR.GetChannelGroups', channeltype='tv') or {}).get('channelgroups') or []
     group = next((g for g in groups if g.get('label') == label), None)
     if not group:
         return []
-    return (kodi.jsonrpc('PVR.GetChannels', channelgroupid=group['channelgroupid'], properties=CHANNEL_FIELDS)
+    return (kodi.jsonrpc('PVR.GetChannels', channelgroupid=group['channelgroupid'], properties=fields or CHANNEL_FIELDS)
             or {}).get('channels') or []
 
 
