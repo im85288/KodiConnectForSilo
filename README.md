@@ -200,6 +200,16 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.23.0 (2026-11-17)
+- **Browse channels before switching (Live TV keys):** Up and Down send Kodi's Down/Up rather than Channel
+  Down/Up, so with Kodi's *Confirm channel switch* on (its default) they show the channel above or below in the
+  banner without leaving the one playing, and OK watches it, as Sky's mini guide; off, they switch at once.
+- **Mini guide (long OK in Live TV, Skyline 0.14.3):** `?mode=mini_grid` lists the playing group's channels, each
+  with what's on in four half-hour columns (`silo.c<n>.*`, the playing channel marked) for Skyline's window 1198;
+  `?mode=mini_shift` moves it a half hour past either edge, a day back into catch-up and two ahead. Kodi's guide
+  is kept five minutes between moves. The playing group is read from Kodi: a name like "UK | Sky Sports" can't go
+  in a plugin path, as Kodi takes what follows a `|` for the address's options.
+
 ### v0.22.0 (2026-11-15)
 - **Early resume:** a resumed title starts a little before where it was left (Playback > Resume a little earlier:
   Off, 3, 5 or 10 s; 3 by default, as PlexMod for Kodi), as playback can only begin on a keyframe. Direct play
