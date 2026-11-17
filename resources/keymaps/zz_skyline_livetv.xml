@@ -2,6 +2,7 @@
 <!-- Silo Skyline: Live TV keys as TiviMate's. Copy to userdata/keymaps/ (named to
      load after other keymaps, which it overrides only for these keys):
        OK         the recently watched channels (Skyline's window 1196)
+       Long OK    the mini guide, as Sky's (Skyline's window 1198)
        Up / Down  the channel above or below, as in the guide (lower and higher
                   numbers). Kodi's Down / Up actions: with Kodi's "Confirm channel
                   switch" on (its default) they browse channels in the banner and OK
@@ -13,6 +14,8 @@
     <keyboard>
       <return>ActivateWindow(1196)</return>
       <enter>ActivateWindow(1196)</enter>
+      <return mod="longpress">ActivateWindow(1198)</return>
+      <enter mod="longpress">ActivateWindow(1198)</enter>
       <up>Down</up>
       <down>Up</down>
       <left>ActivateWindow(PVROSDChannels)</left>
@@ -20,6 +23,7 @@
     </keyboard>
     <remote>
       <select>ActivateWindow(1196)</select>
+      <select mod="longpress">ActivateWindow(1198)</select>
       <up>Down</up>
       <down>Up</down>
       <left>ActivateWindow(PVROSDChannels)</left>

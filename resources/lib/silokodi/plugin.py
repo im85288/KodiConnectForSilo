@@ -149,7 +149,11 @@ def run(argv):
         return forget_channel(params.get('id'))
     if mode == 'schedule':
         # The name as the skin wrote it (it can't URL-encode one), last in the path.
+        if params.get('mini') == '1':
+            return mini_schedule(handle, params.get('number'), raw_tail(argv, 'name'))
         return schedule(base, handle, params.get('number'), raw_tail(argv, 'name'), params.get('full') == '1')
+    if mode == 'mini_step':
+        return mini_step(params.get('dir'), raw_tail(argv, 'group'))
     if mode == 'schedule_days':
         return schedule_days(handle, params.get('number'), raw_tail(argv, 'name'))
     if mode == 'play_broadcast':
@@ -385,6 +389,54 @@ def schedule(base, handle, number, name, full=False):
         # Which channel schedule_now is for: the skin waits for this one's.
         kodi.set_property('schedule_for', str(number or '').strip())
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+def mini_schedule(handle, number, name, now=None):
+    """A channel's programmes for Skyline's mini guide (channels.mini_rows),
+    each with silo.left (minutes left on the one on now) beside the schedule's
+    properties. silokodi.mini_now is the row on now and silokodi.mini_for the
+    channel's number, for the skin to focus it once this channel's arrive."""
+    channel = channels.find_channel(number, name)
+    now = now or time.time()
+    rows = channels.mini_rows(channels.channel_schedule(channel, now)) if channel else []
+    clock = xbmc.getRegion('time').replace(':%S', '')
+    focus = 0
+    for index, ((label, label2, props), row) in enumerate(zip(channels.items(rows, channel, clock), rows)):
+        if row['when'] == 'now':
+            focus = index
+            props['silo.left'] = str(max(1, int((row['end'] - now) // 60)))
+        item = xbmcgui.ListItem(label, label2, offscreen=True)
+        item.setProperties(props)
+        xbmcplugin.addDirectoryItem(handle, '', item, isFolder=False)
+    kodi.set_property('mini_now', str(focus))
+    kodi.set_property('mini_for', str(number or '').strip())
+    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+def mini_step(direction, group):
+    """Up or Down in Skyline's mini guide: the channel above or below the one
+    it shows (Window(Home).Property(silo.mini.number)) in the playing group,
+    in the guide's order, wrapping round; the skin's properties name it."""
+    channels_in = [c for c in group_channels(group) or tv_channels() if not c.get('hidden')]
+    if not channels_in:
+        return
+    number = kodi.HOME.getProperty('silo.mini.number')
+    at = next((i for i, c in enumerate(channels_in) if str(c.get('channelnumber')) == number), 0)
+    channel = channels_in[(at + (-1 if direction == '-1' else 1)) % len(channels_in)]
+    for key, value in (('number', str(channel.get('channelnumber') or '')), ('name', channel.get('label') or ''),
+                       ('logo', channel.get('icon') or ''), ('channelid', str(channel['channelid']))):
+        kodi.HOME.setProperty('silo.mini.%s' % key, value)
+    kodi.HOME.clearProperty('silo.mini.placed')  # focus its programme on now once it loads
+
+
+def group_channels(label):
+    """A TV channel group's channels by its name (VideoPlayer.ChannelGroup), in its order."""
+    groups = (kodi.jsonrpc('PVR.GetChannelGroups', channeltype='tv') or {}).get('channelgroups') or []
+    group = next((g for g in groups if g.get('label') == label), None)
+    if not group:
+        return []
+    return (kodi.jsonrpc('PVR.GetChannels', channelgroupid=group['channelgroupid'], properties=CHANNEL_FIELDS)
+            or {}).get('channels') or []
 
 
 def schedule_days(handle, number, name):

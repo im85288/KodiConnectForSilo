@@ -179,6 +179,16 @@ def around_now(rows, before=2):
     return ([rows[header]] + picked) if header is not None and header < start else picked
 
 
+def mini_rows(rows, past=6, ahead=12):
+    """The rows for Skyline's mini guide (long OK in Live TV, as Sky's): no
+    day headers; a few programmes before the one on now when catch-up can
+    play them, the one on now, then the next few."""
+    shows = [row for row in rows if not row.get('header')]
+    now = next((i for i, row in enumerate(shows) if row['when'] != 'past'), len(shows))
+    before = [row for row in shows[:now] if row.get('archive')][-past:] if past else []
+    return before + shows[now:now + 1 + ahead]
+
+
 def find_channel(number, name, found=None):
     """A Live TV channel by the skin's number, else its name (with catch-up).
     found: Kodi's channel list, if already read."""
@@ -229,5 +239,6 @@ def items(rows, channel, clock):
             'silo.past': '1' if row['when'] == 'past' else '',
             'silo.archive': '1' if row.get('archive') else '',
             'silo.when': row['when'],
+            'silo.times': '%s – %s' % (at(row['start']), at(row['end'])),
             'silo.broadcastid': str(row['broadcastid']), 'silo.channelid': str(channel['channelid'])}))
     return found
