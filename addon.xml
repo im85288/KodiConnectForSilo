@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.23.1" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.24.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,14 +35,14 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.23.1: a Continue Watching card no longer stays blank after Kodi starts (its saved picture link had expired); it now loads once the rows refresh, without reloading the skin.
+    <news>0.24.0: ratings follow Silo's new 1 to 10 scale: rate with half stars, and a rating reads back on the right line (ratings given from Kodi since the server moved to it went in at half; rate those again). Shows you have started show their episodes left on Home's posters (needs Skyline 0.15.0).
+
+0.23.1: a Continue Watching card no longer stays blank after Kodi starts (its saved picture link had expired); it now loads once the rows refresh, without reloading the skin.
 
 0.23.0: Live TV, as Sky's: Up/Down browse channels in the banner without switching (OK to watch); hold OK for a mini guide of five channels in half-hour columns, back into catch-up and on into the days ahead (needs Skyline 0.14.3).
 
 0.22.0: resuming starts 3 seconds before where you stopped (a Playback setting), and unpausing can rewind a little. With 4K menus it offers to keep posters and backgrounds sharp (Kodi's picture sizes, then a restart). A Silo-style skin can switch the screensaver, its delay, spoiler hiding and theme music volume (now quieter) from its own settings. Dolby Vision's profile comes apart from the badge, for the skin to show or not. Requests' backgrounds take the poster's colour, not green.
 
-0.21.4: resolution and HDR chosen at sign-in, libraries and Top 10 rows chosen in the settings no longer revert when the settings screen closes. A row slower than a second logs where the time went (Silo or Kodi's library).
-
-0.21.3: Dolby Vision badges name the profile (DOLBY VISION 7.6, 8.1), films and episodes, filled in automatically after updating. Safer when power is cut (smart plug schedules): no sign-out, a damaged record rebuilt. New pictures no longer reload every row.</news>
+0.21.4: resolution and HDR chosen at sign-in, libraries and Top 10 rows chosen in the settings no longer revert when the settings screen closes. A row slower than a second logs where the time went (Silo or Kodi's library).</news>
   </extension>
 </addon>

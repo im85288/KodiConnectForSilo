@@ -200,6 +200,14 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.24.0 (2026-11-19)
+- **Ratings on Silo's 1 to 10:** Silo moved personal ratings from 1-5 stars to 1-10, shown as five stars with
+  halves (silo-server #4398). The Rate menu sent 1-5, which Silo then read as half a star to two and a half, and
+  read 8 back for four stars. It now offers the ten ratings, whole stars with their words and the halves between,
+  and sends and reads 1-10. Ratings given from Kodi between the server's update and this release went in at half.
+- **Episodes left on Home's cards:** `home.episodes_left`, for a show started and not finished, as Silo's apps put
+  it in the poster's corner (Skyline 0.15.0). A show not started has none.
+
 ### v0.23.1 (2026-11-19)
 - **Blank Continue Watching card after a start:** Home first draws the cards saved last time, and a card's series
   art link may have expired by then. The relay can't renew one card's link on its own (the rows are published
