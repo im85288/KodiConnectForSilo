@@ -51,7 +51,7 @@ NEXT_EPISODE = 'Next Episode'
 CARDS = 20  # cards per row; Silo's rows go up to 50 (most hold 13-20), and each costs a skin's load time
 FIELDS = ('type', 'dbid', 'label', 'card.title', 'card.sub', 'card.wide_sub', 'hero.title', 'hero.meta',
           'hero.facts', 'rating.imdb', 'rating.tmdb', 'rating.rtcritic',
-          'hero.detail', 'plot', 'mpaa', 'badge1', 'badge2', 'badge3', 'dv', 'tint', 'percent', 'playcount', 'new', 'left', 'dismiss', 'rank', 'place',
+          'hero.detail', 'plot', 'mpaa', 'badge1', 'badge2', 'badge3', 'dv', 'tint', 'percent', 'playcount', 'episodes_left', 'new', 'left', 'dismiss', 'rank', 'place',
           'art.poster', 'art.landscape', 'art.still', 'art.fanart', 'art.clearlogo', 'request.type', 'request.tmdb',
           'status.tint', 'status.seg1', 'status.seg2', 'status.seg3', 'status.seg4',
           'request.library', 'request.state', 'request.more', 'request.logo', 'request.from', 'request.to',
@@ -99,6 +99,7 @@ def card(kind, details, show=None, tint='', landscape=''):
         # Dolby Vision's profile, apart: a skin adds it to the badge if it wants (DOLBY VISION 7.6).
         'dv': props.get('silo.dv', ''),
         'percent': str(percent) if percent else '', 'playcount': watched_mark(kind, details),
+        'episodes_left': episodes_left(kind, details),
         # Netflix's marks: a show's new episode, a part-watched title's time left.
         'new': props.get('silo.new', ''), 'left': props.get('silo.left', ''),
         'art.poster': art.get('poster') or art.get('tvshow.poster') or art.get('thumb') or '',
@@ -117,6 +118,16 @@ def rating_markup(rating):
     if not source:
         return rating
     return '[COLOR 66EDEDED]%s[/COLOR] [B]%s[/B]' % (source, score)
+
+
+def episodes_left(kind, details):
+    """A show you've started and not finished: its episodes left, for the
+    watch-status corner as Silo's apps draw it. '' for any other title, and
+    for a show not started (its count would be on every new show)."""
+    if kind != 'tvshow':
+        return ''
+    total, watched = details.get('episode') or 0, details.get('watchedepisodes') or 0
+    return str(total - watched) if 0 < watched < total else ''
 
 
 def watched_mark(kind, details):

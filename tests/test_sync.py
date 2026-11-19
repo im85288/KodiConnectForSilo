@@ -1419,3 +1419,12 @@ def test_a_fresh_library_is_not_checked_for_old_labels(silo, syncer):
     syncer.sync()
     assert not [c for c in silo.calls if c[0] == 'ids_with_resolution']
     assert sorted(syncer.db.meta(sync_module.RELABELLED)) == ['1:movie', '2:episode']
+
+
+def test_a_started_show_has_its_episodes_left():
+    # Silo's watch-status corner: a count only on a show started and not finished.
+    from resources.lib.silokodi.rows import episodes_left
+    assert episodes_left('tvshow', {'episode': 8, 'watchedepisodes': 2}) == '6'
+    assert episodes_left('tvshow', {'episode': 8, 'watchedepisodes': 0}) == ''  # not started
+    assert episodes_left('tvshow', {'episode': 8, 'watchedepisodes': 8}) == ''  # the tick instead
+    assert episodes_left('movie', {'playcount': 0}) == ''
