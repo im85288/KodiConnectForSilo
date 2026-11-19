@@ -331,6 +331,12 @@ class Service(object):
         self.recently_played = {}
         self.subtitle_pick = None  # (stored subtitle id, position) to apply when Search online's restart starts
         self.art_attempts = {}
+        # Home-row cards whose picture the relay turned away (series_art):
+        # Kodi never asks again for a picture under an address that failed
+        # in its session, so the card gets a new address once Silo's link is
+        # current again. key -> the retry mark in that address.
+        self.art_turned_away = set()
+        self.art_retry = {}
         self.art_locks, self.art_locks_lock = {}, threading.Lock()  # one refresh per item at a time
         self.progress_dialog = None
         self.next_sync = 0
@@ -1541,7 +1547,14 @@ class Service(object):
         key = 'row:%s' % source['content_id']
         for kind in self.db.set_art(key, {'fanart': source['backdrop']}):
             self.syncer.art_changed.add(mapping.art_url(self.port, key, kind))
-        return mapping.art_url(self.port, key, 'fanart')
+        if key in self.art_turned_away:
+            # Kodi drew the card before its link was current (the saved
+            # cards at start-up hold yesterday's) and won't ask again under
+            # the same address: the relay ignores the query, Kodi doesn't.
+            self.art_turned_away.discard(key)
+            self.art_retry[key] = int(time.time())
+        url = mapping.art_url(self.port, key, 'fanart')
+        return '%s?retry=%d' % (url, self.art_retry[key]) if key in self.art_retry else url
 
     def note_viewed_page(self):
         """When the skin shows a page for the first time, give its rows their paths."""
@@ -1672,7 +1685,9 @@ class Service(object):
         self.art_attempts[content_id] = time.time()
         if content_id.startswith('row:'):
             # A row card's own art (series_art): publishing the rows again
-            # brings Silo's current URL.
+            # brings Silo's current URL, under a new address (Kodi was
+            # turned away from this one).
+            self.art_turned_away.add(content_id)
             self.home_cards_soon()
             return
         if content_id.startswith('box_set:'):

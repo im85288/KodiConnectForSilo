@@ -327,3 +327,21 @@ def test_sync_commands_queue_and_others_are_unknown():
     assert commands.handle(service, 'fullsync', {}) == {'waiting': False}
     assert commands.handle(service, 'nonsense', {}) == {'error': 'unknown command'}
     assert [service.tasks.get()[2] for _ in range(2)] == ['sync', 'fullsync']
+
+
+def test_a_home_card_turned_away_gets_a_new_picture_address(tmp_path):
+    # Home draws the cards saved yesterday at start-up, before the rows are
+    # published again: the relay can't serve a card's expired link, and Kodi
+    # never asks again under an address that failed, so the card stayed blank.
+    from resources.lib.silokodi.syncdb import SyncDB
+    service = bare_service(db=SyncDB(str(tmp_path)), port=57578, art_attempts={}, art_turned_away=set(),
+                           art_retry={}, home_cards_due=None, syncer=type('Syncer', (), {'art_changed': set()})())
+    source = {'content_id': 'episode-1', 'backdrop': 'https://silo.test/season.webp?sig=1'}
+    plain = 'http://127.0.0.1:57578/art/row%3Aepisode-1/fanart'
+    assert service.series_art(source) == plain
+    service._refresh_art('row:episode-1')  # the relay found the link expired
+    assert service.home_cards_due
+    renewed = service.series_art(dict(source, backdrop='https://silo.test/season.webp?sig=2'))
+    assert renewed.startswith(plain + '?retry=')
+    assert service.series_art(source) == renewed  # kept for the session: Kodi loads it once
+    assert service.series_art({'content_id': 'episode-2', 'backdrop': 'b.webp'}).endswith('episode-2/fanart')
