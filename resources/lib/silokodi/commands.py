@@ -73,13 +73,13 @@ def handle(service, name, query):
         service.personal.refresh_soon(['/watchlist'])
         return {'watchlist': 'true' if query.get('add') == '1' else 'false'}
     elif name == 'rate':
-        # Rate a film or series 1-5 stars, or 0 to take the rating away.
+        # Rate a film or series 1 to 10 (half stars), or 0 to take the rating away.
         try:
-            stars = max(0, min(5, int(query.get('stars') or 0)))
-            service.client.rate(query.get('id') or '', stars)
+            rating = max(0, min(10, int(query.get('rating') or 0)))
+            service.client.rate(query.get('id') or '', rating)
         except (ApiError, requests.RequestException, ValueError) as error:
             return {'error': str(error)}
-        return {'rating': str(stars)}
+        return {'rating': str(rating)}
     elif name == 'subtitle_search':
         # The Options sheet's Search online: Silo's providers for the playing file.
         session = service.playback.active

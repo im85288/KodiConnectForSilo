@@ -913,7 +913,7 @@ def info(kind, dbid):
             listitem.setProperty('silo.trailer', extra.get('trailer') or '')
             listitem.setProperty('silo.content_id', content_id)
             listitem.setProperty('silo.watchlist', extra.get('watchlist') or '')
-            # Its Rate button: the profile's stars, '0' not rated ('' no button).
+            # Its Rate button: the profile's rating (1 to 10), '0' not rated ('' no button).
             listitem.setProperty('silo.myrating', extra.get('rating') or '')
             # A toggle on an earlier page doesn't carry over to this one.
             xbmcgui.Window(12003).clearProperty('silo.watchlist.for')
@@ -1043,23 +1043,26 @@ def subtitles():
         dialog.notification(kodi.string(30197), answer['error'], xbmcgui.NOTIFICATION_WARNING)
 
 
-# The Rate button's choices, as Silo's stars with Netflix's words.
-RATINGS = ((5, 30185), (4, 30186), (3, 30187), (2, 30188), (1, 30189))
+# The Rate button's choices, as Silo's five stars with halves (Silo's 1 to
+# 10): whole stars with Netflix's words, the halves between them.
+RATINGS = ((10, 30185), (9, '★★★★½'), (8, 30186), (7, '★★★½'), (6, 30187), (5, '★★½'),
+           (4, 30188), (3, '★½'), (2, 30189), (1, '½'))
 
 
 def rate(content_id, current):
-    """Rate a film or series 1-5 stars (Silo's recommendations learn from it)
-    or take the rating away, and tell the open info page (Window(movieinformation)
-    silo.myrating.for/.now, as the Watchlist button's)."""
-    choices = [(stars, kodi.string(label)) for stars, label in RATINGS]
+    """Rate a film or series, half a star to five (Silo's 1 to 10; its
+    recommendations learn from it) or take the rating away, and tell the open
+    info page (Window(movieinformation) silo.myrating.for/.now, as the
+    Watchlist button's)."""
+    choices = [(rating, kodi.string(label) if isinstance(label, int) else label) for rating, label in RATINGS]
     if current and current != '0':
         choices.append((0, kodi.string(30190)))
-    labels = [('%s  ✓' % label) if str(stars) == current else label for stars, label in choices]
+    labels = [('%s  ✓' % label) if str(rating) == current else label for rating, label in choices]
     picked = xbmcgui.Dialog().contextmenu(labels)
     if picked < 0:
         return
-    stars = choices[picked][0]
-    answer = ask_service('command/rate', timeout=10, id=content_id, stars=str(stars))
+    rating = choices[picked][0]
+    answer = ask_service('command/rate', timeout=10, id=content_id, rating=str(rating))
     if answer.get('error'):
         kodi.notify(answer['error'])
         return

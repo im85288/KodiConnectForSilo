@@ -338,7 +338,8 @@ class SiloClient(object):
         self.request('PUT' if marked else 'DELETE', '/not-interested/%s' % item_id)
 
     def rating(self, item_id):
-        """The profile's stars (1-5) for a title, or 0 when it hasn't rated it."""
+        """The profile's rating for a title, 1 to 10 (five stars with halves:
+        8 is four stars), or 0 when it hasn't rated it."""
         try:
             return int(self.get('/ratings/%s' % item_id).get('rating') or 0)
         except ApiError as error:
@@ -365,11 +366,12 @@ class SiloClient(object):
                 'hearing_impaired': bool(result.get('hearing_impaired'))}
         return self.post('/subtitles/download', body=body).get('subtitle') or {}
 
-    def rate(self, item_id, stars):
-        """Rate a title 1-5 stars (Silo's recommendations learn from it), or
-        0 to take the rating away."""
-        if stars:
-            self.request('PUT', '/ratings/%s' % item_id, body={'rating': stars})
+    def rate(self, item_id, rating):
+        """Rate a title 1 to 10, half stars (Silo's recommendations learn from
+        it), or 0 to take the rating away. Silo rated in stars, 1 to 5, until
+        its ratings moved to 1 to 10 (silo-server #4398)."""
+        if rating:
+            self.request('PUT', '/ratings/%s' % item_id, body={'rating': rating})
         else:
             self.request('DELETE', '/ratings/%s' % item_id)
 

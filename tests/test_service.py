@@ -286,12 +286,12 @@ def test_a_command_silo_refuses_answers_its_error():
     assert commands.handle(service, 'not_interested', {'id': 'm1', 'on': '1'}) == down
 
 
-def test_rating_is_kept_to_zero_to_five_stars():
+def test_rating_is_kept_to_silos_zero_to_ten():
     service = commanding()
-    assert commands.handle(service, 'rate', {'id': 's1', 'stars': '9'}) == {'rating': '5'}
-    assert commands.handle(service, 'rate', {'id': 's1', 'stars': '-2'}) == {'rating': '0'}
-    assert 'error' in commands.handle(service, 'rate', {'id': 's1', 'stars': 'lots'})
-    assert service.client.calls == [('rate', 's1', 5), ('rate', 's1', 0)]
+    assert commands.handle(service, 'rate', {'id': 's1', 'rating': '11'}) == {'rating': '10'}
+    assert commands.handle(service, 'rate', {'id': 's1', 'rating': '-2'}) == {'rating': '0'}
+    assert 'error' in commands.handle(service, 'rate', {'id': 's1', 'rating': 'lots'})
+    assert service.client.calls == [('rate', 's1', 10), ('rate', 's1', 0)]
 
 
 def test_an_episodes_card_menu_is_about_its_show():

@@ -251,7 +251,7 @@ def test_the_home_menu_key_opens_kodis_menu_elsewhere(monkeypatch):
     assert ran == ['Action(ContextMenu)']
 
 
-def test_a_titles_rating_is_its_stars_or_0_when_unrated():
+def test_a_titles_rating_is_silos_1_to_10_or_0_when_unrated():
     from resources.lib.silokodi.api import ApiError, SiloClient
 
     class Client(SiloClient):
@@ -265,22 +265,23 @@ def test_a_titles_rating_is_its_stars_or_0_when_unrated():
 
         def request(self, method, path, body=None, **kwargs):
             self.sent.append((method, path, body))
-    assert Client({'rating': 4}).rating('movie-1') == 4
+    assert Client({'rating': 8}).rating('movie-1') == 8  # four stars
     assert Client(ApiError(404, 'not_found', 'unrated')).rating('movie-1') == 0
     client = Client({})
-    client.rate('movie-1', 5)
+    client.rate('movie-1', 9)
     client.rate('movie-1', 0)
-    assert client.sent == [('PUT', '/ratings/movie-1', {'rating': 5}), ('DELETE', '/ratings/movie-1', None)]
+    assert client.sent == [('PUT', '/ratings/movie-1', {'rating': 9}), ('DELETE', '/ratings/movie-1', None)]
 
 
-def test_rate_keeps_stars_between_0_and_5():
+def test_rate_keeps_the_rating_between_0_and_10():
     host = service([])
     rated = []
-    host.client = type('C', (), {'rate': lambda self, item_id, stars: rated.append((item_id, stars))})()
-    assert host.command('rate', {'id': 'movie-1', 'stars': '9'}) == {'rating': '5'}
-    assert host.command('rate', {'id': 'movie-1', 'stars': '0'}) == {'rating': '0'}
-    assert rated == [('movie-1', 5), ('movie-1', 0)]
-    assert 'error' in host.command('rate', {'id': 'movie-1', 'stars': 'lots'})
+    host.client = type('C', (), {'rate': lambda self, item_id, rating: rated.append((item_id, rating))})()
+    assert host.command('rate', {'id': 'movie-1', 'rating': '9'}) == {'rating': '9'}  # four and a half stars
+    assert host.command('rate', {'id': 'movie-1', 'rating': '12'}) == {'rating': '10'}
+    assert host.command('rate', {'id': 'movie-1', 'rating': '0'}) == {'rating': '0'}
+    assert rated == [('movie-1', 9), ('movie-1', 10), ('movie-1', 0)]
+    assert 'error' in host.command('rate', {'id': 'movie-1', 'rating': 'lots'})
 
 
 def test_coming_soon_captions():
@@ -383,3 +384,19 @@ def test_unpausing_a_silo_title_after_a_while_rewinds_a_little(monkeypatch):
     clock[0] += 60
     player.onPlayBackResumed()
     assert seeks == [595.0]
+
+
+def test_the_rate_menu_offers_half_stars_on_silos_1_to_10(monkeypatch):
+    shown, asked = [], []
+
+    class Dialog(object):
+        def contextmenu(self, labels):
+            shown.extend(labels)
+            return 1  # four and a half stars
+
+    monkeypatch.setattr(plugin.xbmcgui, 'Dialog', Dialog)
+    monkeypatch.setattr(plugin.kodi, 'string', lambda number: '#%d' % number)
+    monkeypatch.setattr(plugin, 'ask_service', lambda path, **query: asked.append((path, query)) or {'rating': '9'})
+    plugin.rate('movie-1', '8')  # rated four stars
+    assert shown[:3] == ['#30185', '★★★★½', '#30186  ✓'] and len(shown) == 11  # ten ratings and Remove
+    assert asked == [('command/rate', {'timeout': 10, 'id': 'movie-1', 'rating': '9'})]
