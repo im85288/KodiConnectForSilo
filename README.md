@@ -200,6 +200,13 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.23.1 (2026-11-19)
+- **Blank Continue Watching card after a start:** Home first draws the cards saved last time, and a card's series
+  art link may have expired by then. The relay can't renew one card's link on its own (the rows are published
+  again a moment later), so it turned Kodi away, and Kodi never asks again under an address that failed in its
+  session: the card stayed blank until the skin was reloaded. Such a card now gets a new address (`?retry=`, which
+  the relay ignores) once the rows bring its current link.
+
 ### v0.23.0 (2026-11-17)
 - **Browse channels before switching (Live TV keys):** Up and Down send Kodi's Down/Up rather than Channel
   Down/Up, so with Kodi's *Confirm channel switch* on (its default) they show the channel above or below in the
