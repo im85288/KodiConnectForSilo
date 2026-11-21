@@ -125,8 +125,8 @@ def test_the_layout_has_the_tv_pages_rows_but_not_as_one_of_silos_pages():
     from resources.lib.silokodi.sync import skin_layout
     layout = skin_layout([], [], {})
     assert 'tv' not in layout['silo.pages'].split(',')
-    assert [layout['silo.tv.%d.title' % n] for n in (1, 2, 3)] == ['On now', 'Live sport now', 'My teams']
-    assert layout['silo.tv.4.title'] == ''
+    assert [layout['silo.tv.%d.title' % n] for n in (1, 2, 3, 4)] == ['On now', 'Live sport now', 'Catch up', 'My teams']
+    assert layout['silo.tv.5.title'] == ''
 
 
 def test_reminders_toggle_and_fall_due(tmp_path):
@@ -181,7 +181,7 @@ def test_the_preview_turns_full_screen_off_for_its_start_only(monkeypatch):
         if method == 'Settings.GetSettingValue':
             return {'value': 3}
         if method == 'PVR.GetChannels':
-            return {'channels': CHANNELS}
+            return {'channels': [dict(c) for c in CHANNELS]}  # copies: kodi_channels sets lastplayed
     monkeypatch.setattr(tvrows.kodi, 'jsonrpc', jsonrpc)
     from resources.lib.silokodi import channels
     monkeypatch.setattr(channels, 'last_watched', lambda: {4: 1000, 5: 2000})  # TNT Sports 1 last
@@ -211,7 +211,7 @@ def test_the_preview_never_waits_for_ever(monkeypatch):
             waits.append(seconds)
             return False
     monkeypatch.setattr(xbmc, 'Monitor', Monitor)
-    monkeypatch.setattr(tvrows.kodi, 'jsonrpc', lambda method, **params: {'channels': CHANNELS}
+    monkeypatch.setattr(tvrows.kodi, 'jsonrpc', lambda method, **params: {'channels': [dict(c) for c in CHANNELS]}
                         if method == 'PVR.GetChannels' else {'value': 3})
     monkeypatch.setattr(xbmc, 'getCondVisibility', lambda condition: condition in ('Player.HasVideo', tvrows.TV_PAGE_SHOWN))
     monkeypatch.setattr(tvrows.kodi, 'get_property', lambda key: '')
@@ -276,3 +276,63 @@ def test_the_chosen_groups_are_kept(tmp_path):
     assert tvrows.load_sport_groups(path) == []
     tvrows.save_sport_groups(['UK | Sky Sports', 'UK | TNT Sports'], path)
     assert tvrows.load_sport_groups(path) == ['UK | Sky Sports', 'UK | TNT Sports']
+
+
+def test_a_live_card_says_how_long_is_left():
+    channels = [dict(c) for c in CHANNELS]
+    channels[4]['broadcastnow'] = dict(channels[4]['broadcastnow'], endtime='2026-11-07 16:05:00')
+    rows = tvrows.rows(channels, entries(), ['Newcastle United', 'Newcastle Utd'], NOW)
+    assert rows[tvrows.ON_NOW_ROW][0]['left'] == '35 min left'  # TNT Sports 1, ends 16:05
+    assert rows[tvrows.ON_NOW_ROW][1]['left'] == ''  # its end isn't known
+    assert rows[tvrows.TEAMS_ROW][0]['left'] == '1 h 45 min left'  # live till 17:15
+    assert rows[tvrows.TEAMS_ROW][1]['left'] == ''  # next week's
+
+
+ENDED = GUIDE.replace('</tv>', '''
+<programme start="20261107120000 +0000" stop="20261107140000 +0000" channel="TNT1.uk"><title>Premier League : Spurs v Wolves ᴸᶦᵛᵉ</title><icon src="http://i/s.png"/></programme>
+<programme start="20261107120000 +0000" stop="20261107140000 +0000" channel="SkyPL.uk"><title>Premier League : Spurs v Wolves ᴸᶦᵛᵉ</title></programme>
+<programme start="20261106120000 +0000" stop="20261106140000 +0000" channel="SkyPL.uk"><title>Yesterday's Match ᴸᶦᵛᵉ</title></programme>
+<programme start="20261107140000 +0000" stop="20261107140500 +0000" channel="TNT1.uk"><title>Filler</title></programme>
+<programme start="20261107080000 +0000" stop="20261107090000 +0000" channel="SkyPL.uk"><title>Morning Show</title></programme>
+</tv>''')
+
+
+def test_catch_up_is_whats_ended_on_channels_with_catch_up():
+    ended = []
+    found = tvrows.programmes(ENDED.encode(), tvrows.playlist_names(PLAYLIST), NOW, ended=ended)
+    channels = [dict(c, hasarchive=c['channelid'] in (4, 5)) for c in CHANNELS]
+    rows = tvrows.rows(channels, found, [], NOW, ended=ended)
+    catchup = rows[tvrows.CATCHUP_ROW]
+    # Newest first: the match (once, its best feed: Sky's ranks above TNT's?
+    # both English: the name decides), then TNT's earlier programme. Not the
+    # 5-minute filler, nor Sky's 08:00 show (over 6 h ago), nor yesterday's
+    # match (over 24 h ago), nor channels without catch-up.
+    assert [c['card.title'] for c in catchup] == ['Spurs v Wolves', 'Earlier Thing']
+    match = catchup[0]
+    assert match['card.sub'].endswith('Today 12:00 – 14:00') and match['left'] == 'Catch up'
+    assert 'mode=play_catchup&channel=' in match['tv.play'] and match['tv.play'].endswith('&start=%d' % int(
+        datetime.datetime(2026, 11, 7, 12, 0, tzinfo=UTC).timestamp()))
+    assert tvrows.card_channel(match['tv.play']) is None  # resting on it doesn't switch the preview
+    # Without catch-up anywhere, the row is empty.
+    assert tvrows.rows(CHANNELS, found, [], NOW, ended=ended)[tvrows.CATCHUP_ROW] == []
+
+
+def test_a_catch_up_card_plays_its_programme_from_kodis_guide(monkeypatch):
+    from resources.lib.silokodi import plugin
+    calls = []
+
+    def jsonrpc(method, **params):
+        calls.append((method, params))
+        if method == 'PVR.GetBroadcasts':
+            return {'broadcasts': [{'broadcastid': 70, 'starttime': '2026-11-07 10:00:00'},
+                                   {'broadcastid': 71, 'starttime': '2026-11-07 12:00:00'}]}
+        return {}
+    monkeypatch.setattr(plugin.kodi, 'jsonrpc', jsonrpc)
+    monkeypatch.setattr(plugin.kodi, 'log', lambda message: None)
+    noticed = []
+    monkeypatch.setattr(plugin.kodi, 'notify', lambda message, *args, **kwargs: noticed.append(message))
+    start = int(datetime.datetime(2026, 11, 7, 12, 0, tzinfo=UTC).timestamp())
+    plugin.play_catchup('5', str(start))
+    assert calls[-1] == ('Player.Open', {'item': {'broadcastid': 71}})
+    plugin.play_catchup('5', str(start + 60))  # gone from Kodi's guide
+    assert calls[-1][0] == 'PVR.GetBroadcasts' and noticed

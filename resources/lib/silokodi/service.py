@@ -1359,12 +1359,22 @@ class Service(object):
     def publish_tv_title(self):
         """What Live TV is playing, without the guide's live mark, for
         Skyline's TV page hero (tv.playing_title): its cards' titles are so."""
-        title = ''
+        title, channel = '', ''
         if xbmc.getCondVisibility('VideoPlayer.Content(LiveTV)'):
             title = tvrows.without_marks(xbmc.getInfoLabel('VideoPlayer.Title'))
-        if title != getattr(self, 'tv_title', None):
-            self.tv_title = title
+            channel = xbmc.getInfoLabel('VideoPlayer.ChannelName')
+        if (title, channel) != getattr(self, 'tv_playing', None):
+            self.tv_playing = (title, channel)
             kodi.set_property('tv.playing_title', title)
+            # Whether its channel has catch-up: the hero's Start again (Apple
+            # TV's), which seeks the catch-up stream to the programme's start.
+            # Asked only as the programme or channel changes.
+            try:
+                archive = bool(channel) and tvrows.playing_has_archive()
+            except Exception as error:  # the button just stays hidden
+                kodi.log_warning('TV page: catch-up: %s' % error)
+                archive = False
+            kodi.set_property('tv.playing_archive', '1' if archive else '')
 
     def note_tv_watched(self):
         """A channel the TV page previewed, now watched full screen: it counts

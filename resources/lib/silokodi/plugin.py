@@ -130,6 +130,8 @@ def run(argv):
         return recent_channels(base, handle)
     if mode == 'play_channel':
         return play_channel(params.get('id'))
+    if mode == 'play_catchup':
+        return play_catchup(params.get('channel'), params.get('start'))
     if mode == 'tv_preview':
         # Skyline's TV page opened: the last channel watched, in its preview box.
         from .tvrows import preview
@@ -519,6 +521,25 @@ def schedule_days(handle, number, name):
                                 'silo.today': '1' if row['today'] else ''})
             xbmcplugin.addDirectoryItem(handle, '', item, isFolder=False)
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+def play_catchup(channel_id, start):
+    """Skyline's Catch up card: the channel's programme that started at start
+    (epoch seconds), from catch-up; Kodi's IPTV add-on builds the archive's
+    address from the programme's id, found among the channel's broadcasts."""
+    if not str(channel_id or '').isdigit() or not str(start or '').isdigit():
+        return
+    import datetime
+    wanted = datetime.datetime.fromtimestamp(int(start), datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    broadcasts = (kodi.jsonrpc('PVR.GetBroadcasts', channelid=int(channel_id), properties=['starttime']) or {}) \
+        .get('broadcasts') or []
+    found = next((b for b in broadcasts if b.get('starttime') == wanted), None)
+    kodi.log('Catch up: channel %s at %s: %s' % (channel_id, wanted, 'programme %s' % found['broadcastid']
+                                                                   if found else 'not in Kodi\'s guide'))
+    if found:
+        kodi.jsonrpc('Player.Open', item={'broadcastid': found['broadcastid']})
+    else:
+        kodi.notify('That programme is no longer in the guide')
 
 
 def play_broadcast(broadcast_id, channel_id, when):

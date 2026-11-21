@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Skyline's TV page: My teams, On now and Live sport now, as cards.
+"""Skyline's TV page: On now, Live sport now, Catch up and My teams, as cards.
 
 The guide and the playlist are the ones Kodi's IPTV Simple add-on reads (its
 instance settings say where): the playlist ties each guide id to a channel's
@@ -22,9 +22,15 @@ import xml.etree.ElementTree as ET
 
 from . import fileio, kodi
 
-TEAMS_ROW, ON_NOW_ROW, SPORT_ROW = 'teams', 'onnow', 'sport'
+TEAMS_ROW, ON_NOW_ROW, SPORT_ROW, CATCHUP_ROW = 'teams', 'onnow', 'sport', 'catchup'
 # My teams last: it's often a fixture days off, On now what's playing (the user's order).
-ROWS = ((ON_NOW_ROW, 'On now'), (SPORT_ROW, 'Live sport now'), (TEAMS_ROW, 'My teams'))
+ROWS = ((ON_NOW_ROW, 'On now'), (SPORT_ROW, 'Live sport now'), (CATCHUP_ROW, 'Catch up'), (TEAMS_ROW, 'My teams'))
+# Catch up: live matches that ended within SPORT_BACK, and what the most recent
+# RECENT_CATCHUP channels showed within RECENT_BACK, on channels with catch-up.
+SPORT_BACK = datetime.timedelta(hours=24)
+RECENT_BACK = datetime.timedelta(hours=6)
+RECENT_CATCHUP = 6
+SHORTEST = datetime.timedelta(minutes=10)  # shorter is a filler between programmes
 CARDS = 12
 AHEAD = datetime.timedelta(days=7)
 MATCH_WINDOW = datetime.timedelta(minutes=75)
@@ -116,10 +122,12 @@ def live(title, categories):
     return bool(LIVE_MARKS.search(title or '')) or any((c or '').strip().lower() == 'live' for c in categories)
 
 
-def programmes(data, names, now, pictures=None):
+def programmes(data, names, now, pictures=None, ended=None):
     """The live programmes of the playlist's channels on now or in AHEAD:
-    [{name, title, desc, start, stop, icon}]; and into pictures (if given),
-    {channel name: the picture of what it shows now}, live or not."""
+    [{name, title, desc, start, stop, icon}]; into pictures (if given),
+    {channel name: the picture of what it shows now}, live or not; and into
+    ended (if given), every programme that ended within SPORT_BACK, each with
+    live (whether it was shown as it happened), for the Catch up row."""
     out = []
     for _, element in ET.iterparse(io.BytesIO(data), events=('end',)):
         if element.tag != 'programme':
@@ -131,6 +139,12 @@ def programmes(data, names, now, pictures=None):
             picture = element.find('icon')
             if picture is not None and picture.get('src'):
                 pictures[name] = picture.get('src')
+        if ended is not None and name and start and stop and now - SPORT_BACK < stop <= now \
+                and stop - start >= SHORTEST:
+            icon = element.find('icon')
+            ended.append({'name': name, 'title': title, 'desc': element.findtext('desc') or '', 'start': start,
+                          'stop': stop, 'icon': icon.get('src') if icon is not None else '',
+                          'live': live(title, [c.text for c in element.findall('category')])})
         if name and start and stop and stop > now and start < now + AHEAD \
                 and live(title, [c.text for c in element.findall('category')]):
             icon = element.find('icon')
@@ -304,6 +318,23 @@ def when(moment, now):
     return local.strftime('%a %d %b %H:%M')
 
 
+def left(stop, now):
+    """A programme on now's time left, as YouTube TV's guide: '35 min left'
+    (mapping.time_left's words), or '' when it has ended or isn't known."""
+    if not stop or stop <= now:
+        return ''
+    from .mapping import time_left
+    return time_left({'position': 1, 'total': 1 + (stop - now).total_seconds()})
+
+
+def broadcast_stop(on):
+    """When a Kodi broadcast (broadcastnow) ends, as an aware datetime, or None."""
+    try:
+        return datetime.datetime.strptime(on['endtime'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=datetime.timezone.utc)
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def percent(start, stop, now):
     span = (stop - start).total_seconds()
     return str(int(max(0, min(100, (now - start).total_seconds() * 100 / span)))) if span > 0 else ''
@@ -349,6 +380,7 @@ def guide_match_card(match, channels, now, reminded=()):
                 match['channels'][0] if match['channels'][0] in channels else '') if part),
             'hero.detail': '  ·  '.join(n for n in match['channels'] if n in channels),
             'plot': match.get('desc', ''), 'percent': percent(match['start'], match['stop'], now) if on else '',
+            'left': left(match['stop'], now) if on else '',
             'art.landscape': art, 'art.fanart': art, 'tv.logo': logo, 'tv.play': action}
 
 
@@ -405,10 +437,51 @@ def plain_channel_card(channel, now, picture=''):
             'hero.facts': '  ·  '.join(part for part in (channel.get('label') or '', times(on)) if part),
             'plot': on.get('plot') or '',
             'percent': str(int(progress)) if progress else '',
+            'left': left(broadcast_stop(on), now),
             # The programme's picture, else (tv.logo) the channel's logo, which a
             # skin centres: a logo cropped to fill a landscape card is a mess.
             'art.landscape': picture, 'art.fanart': picture, 'tv.logo': channel.get('icon') or '',
             'tv.play': '%s?mode=play_channel&id=%s' % (PLUGIN, channel.get('channelid'))}
+
+
+def catchup_card(entry, channel, now):
+    """A programme that has ended, played from its channel's catch-up."""
+    title = without_marks(entry['title']) or channel.get('label') or ''
+    local = entry['start'].astimezone()
+    day = 'Today' if local.date() == now.astimezone().date() else local.strftime('%a')
+    span = '%s %s – %s' % (day, local.strftime('%H:%M'), entry['stop'].astimezone().strftime('%H:%M'))
+    sub = '%s · %s' % (channel.get('label') or '', span)
+    art = entry.get('icon') or ''
+    return {'type': 'tv', 'label': title, 'card.title': title, 'card.sub': sub, 'card.wide_sub': sub,
+            'hero.title': title, 'hero.meta': channel.get('label') or '',
+            'hero.facts': '  ·  '.join(part for part in (channel.get('label') or '', span) if part),
+            'plot': entry.get('desc') or '', 'percent': '', 'left': 'Catch up',
+            'art.landscape': art, 'art.fanart': art, 'tv.logo': channel.get('icon') or '',
+            'tv.play': '%s?mode=play_catchup&channel=%s&start=%d' % (PLUGIN, channel.get('channelid'),
+                                                                     int(entry['start'].timestamp()))}
+
+
+def catchup(ended, channels, recent, now):
+    """The Catch up row: live matches that ended within SPORT_BACK (one card a
+    match, its best feed with catch-up), then what the recent channels showed
+    within RECENT_BACK; only on channels with catch-up, newest first."""
+    archive = {name: c for name, c in channels.items() if c.get('hasarchive')}
+    picks = []
+    sport = [e for e in ended if e.get('live') and e['name'] in archive]
+    for match in group(sport, same_title):
+        best = next(e for e in sorted(match['entries'], key=lambda e: (feed_rank(e['name']), e['name'])))
+        picks.append(dict(best, title=match['title'] or best['title']))
+    recent_names = [c.get('label') for c in recent if c.get('label') in archive][:RECENT_CATCHUP]
+    picks += [e for e in ended if e['name'] in recent_names and now - e['stop'] <= RECENT_BACK
+              and not e.get('live')]
+    seen, cards = set(), []
+    for entry in sorted(picks, key=lambda e: e['stop'], reverse=True):
+        key = (entry['name'], int(entry['start'].timestamp()))
+        if key in seen:
+            continue
+        seen.add(key)
+        cards.append(catchup_card(entry, archive[entry['name']], now))
+    return cards[:CARDS]
 
 
 def quote(text):
@@ -417,7 +490,7 @@ def quote(text):
 
 
 def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=(), fixtures=(),
-         unknown='channel not known yet', leagues=(), sport_groups=(), groups=None):
+         unknown='channel not known yet', leagues=(), sport_groups=(), groups=None, ended=()):
     """{row: [card]} for the TV page. known: TheSportsDB's teams (theirs and
     the viewer's); fixtures: [(team, fixture)], the viewer's teams' next ones,
     a card each until the guide lists them. sport_groups: the playlist groups
@@ -452,12 +525,13 @@ def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=()
     sport = [c for c in (match_card(m, channels, now, known=known, leagues=leagues) for m in group(airing, same_title))
              if c and c['card.title'] not in team_titles]
     sport.sort(key=lambda card: card['card.title'])
-    return {TEAMS_ROW: team_cards[:CARDS], ON_NOW_ROW: on_now, SPORT_ROW: sport[:CARDS]}
+    return {TEAMS_ROW: team_cards[:CARDS], ON_NOW_ROW: on_now, SPORT_ROW: sport[:CARDS],
+            CATCHUP_ROW: catchup(ended, channels, recent, now)}
 
 
 # ----- gathering it -----
 
-CHANNEL_PROPERTIES = ['channel', 'icon', 'lastplayed', 'hidden', 'broadcastnow']
+CHANNEL_PROPERTIES = ['channel', 'icon', 'lastplayed', 'hidden', 'broadcastnow', 'hasarchive']
 
 
 def kodi_channels():
@@ -503,14 +577,14 @@ def gather(teams, reminded=(), now=None, sport_groups=()):
     if not channel_list:
         return {row: [] for row, _ in ROWS}
     playlist, guide = sources(kodi.addon_data_dir())
-    entries, pictures, groups = [], {}, {}
+    entries, pictures, groups, ended = [], {}, {}, []
     if playlist and guide:
         text = read(playlist).decode('utf-8', 'replace')
         names, groups = playlist_names(text), playlist_groups(text)
-        entries = programmes(read(guide), names, now, pictures)
+        entries = programmes(read(guide), names, now, pictures, ended)
     known, fixtures, leagues = sports(teams, now, os.path.join(kodi.profile_dir(), 'sportsdb.json'))
     return rows(channel_list, entries, teams, now, reminded, pictures, known, fixtures, kodi.string(30228), leagues,
-                sport_groups, groups)
+                sport_groups, groups, ended)
 
 
 def fill_reminders(cards, path=None):
@@ -688,6 +762,15 @@ def playing_channel():
         if item.get('type') == 'channel':
             return item.get('id')
     return None
+
+
+def playing_has_archive():
+    """Whether the Live TV channel playing has catch-up (its provider's archive)."""
+    channel = playing_channel()
+    if channel is None:
+        return False
+    details = (kodi.jsonrpc('PVR.GetChannelDetails', channelid=channel, properties=['hasarchive']) or {})
+    return bool((details.get('channeldetails') or {}).get('hasarchive'))
 
 
 class Follower(object):
