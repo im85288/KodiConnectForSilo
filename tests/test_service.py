@@ -20,6 +20,7 @@ def bare_service(**attrs):
     service.queued, service.queued_lock = set(), threading.Lock()
     service.tick_error = ('', 0)
     service.display_checked = True
+    service.tv_watching, service.tv_rows_due = ('', False), 0
     service.__dict__.update(attrs)
     return service
 
@@ -345,3 +346,23 @@ def test_a_home_card_turned_away_gets_a_new_picture_address(tmp_path):
     assert renewed.startswith(plain + '?retry=')
     assert service.series_art(source) == renewed  # kept for the session: Kodi loads it once
     assert service.series_art({'content_id': 'episode-2', 'backdrop': 'b.webp'}).endswith('episode-2/fanart')
+
+
+def test_on_now_is_rebuilt_after_a_channel_is_watched_not_previewed(monkeypatch):
+    fullscreen = []
+    monkeypatch.setattr(service_module.xbmc, 'getCondVisibility', lambda condition: bool(fullscreen))
+    service = bare_service(tv_watching=('', False), tv_rows_due=0)
+    service.tv_watch_changed('Sky Sports News', now=100)  # the TV page's preview: not watching
+    assert service.tv_rows_due == 0
+    fullscreen.append(True)
+    service.tv_watch_changed('Sky Sports News', now=110)  # Watch: full screen
+    assert service.tv_rows_due == 110 + service_module.TV_WATCHED_WAIT
+    service.tv_rows_due = 0
+    service.tv_watch_changed('Sky Sports News', now=120)  # still the same
+    assert service.tv_rows_due == 0
+    service.tv_watch_changed('TNT Sports 1', now=130)  # zapped full screen
+    assert service.tv_rows_due == 130 + service_module.TV_WATCHED_WAIT
+    service.tv_rows_due = 0
+    fullscreen.clear()
+    service.tv_watch_changed('', now=140)  # stopped
+    assert service.tv_rows_due == 140 + service_module.TV_WATCHED_WAIT

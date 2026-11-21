@@ -85,6 +85,7 @@ PUBLISHED_PAGES = {'home': 20, 'requests': 12}
 # load from their paths as Movies' rows do. Skyline's HOME_PUBLISHED_ROWS.
 PUBLISHED_ROWS = {'home': 4, 'requests': 12}
 TV_REFRESH = 300  # seconds between the TV page's rows (Skyline): what's on, and live matches
+TV_WATCHED_WAIT = 5  # seconds after a channel is watched before On now is rebuilt
 # The playing title's details for a skin's player (silokodi.playing.*).
 PLAYING_FIELDS = ('rating.imdb', 'rating.tmdb', 'rating.rtcritic', 'badge1', 'badge2', 'badge3', 'dv', 'mpaa',
                   'air_date')
@@ -375,6 +376,8 @@ class Service(object):
         self.personal_due = True
         self.tv_publishing = False
         self.tv_follower = tvrows.Follower()  # the TV page's preview follows focus
+        self.tv_watching = ('', False)  # Live TV's channel and whether full screen (tv_watch_changed)
+        self.tv_rows_due = 0  # when On now is rebuilt for a channel watched (0: not due)
 
     def close_leftover_sessions(self):
         """Silo sessions the last run left open (Kodi killed or crashed while
@@ -484,6 +487,9 @@ class Service(object):
             self.tv_follower.tick(time.time())
         except Exception as error:  # never let it stop the service
             kodi.log_warning('TV preview follow: %s' % error)
+        if self.tv_rows_due and time.time() >= self.tv_rows_due:
+            self.tv_rows_due = 0
+            kodi.set_property('tv.refresh', '1')
         if ticks % TV_REFRESH == 5 or kodi.get_property('tv.refresh'):
             kodi.set_property('tv.refresh', '')
             self.publish_tv_cards_soon()
@@ -1375,6 +1381,19 @@ class Service(object):
                 kodi.log_warning('TV page: catch-up: %s' % error)
                 archive = False
             kodi.set_property('tv.playing_archive', '1' if archive else '')
+        self.tv_watch_changed(channel)
+
+    def tv_watch_changed(self, channel, now=None):
+        """On now (the TV page's recent channels) rebuilt a moment after a
+        channel is watched full screen, or Live TV stops: Kodi has written its
+        last-watched time by then. A preview changing channel (the TV page's
+        backdrop, following focus) doesn't count, as in On now's order."""
+        watching = (channel, bool(channel) and xbmc.getCondVisibility('Window.IsActive(fullscreenvideo)'))
+        if watching == self.tv_watching:
+            return
+        before, self.tv_watching = self.tv_watching, watching
+        if watching[1] or (before[0] and not channel):
+            self.tv_rows_due = (now or time.time()) + TV_WATCHED_WAIT
 
     def note_tv_watched(self):
         """A channel the TV page previewed, now watched full screen: it counts
