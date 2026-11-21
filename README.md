@@ -200,6 +200,15 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.25.0 (2026-11-21)
+- **Catch up row (Skyline's TV page):** live matches that ended in the last 24 h (one card a match, its best feed)
+  and what the six most recent channels showed in the last 6 h, only on channels with catch-up, newest first. A
+  card plays its programme from catch-up (`mode=play_catchup`: the broadcast with that start in Kodi's guide).
+- **Time left on live cards:** `left` ("35 min left") on On now, Live sport now and My teams cards on now.
+- **On now updates after watching:** the TV rows are rebuilt 5 s after a channel is watched full screen or Live TV
+  stops, not only every 5 minutes; the preview changing channel doesn't count.
+- **Start again:** `tv.playing_archive` says whether the playing channel has catch-up, for Skyline's hero button.
+
 ### v0.24.0 (2026-11-19)
 - **Ratings on Silo's 1 to 10:** Silo moved personal ratings from 1-5 stars to 1-10, shown as five stars with
   halves (silo-server #4398). The Rate menu sent 1-5, which Silo then read as half a star to two and a half, and
