@@ -341,3 +341,12 @@ def test_a_broadcast_is_live_by_its_genre():
     from resources.lib.silokodi.channels import is_live
     assert is_live(['Sports / Live']) and is_live('Live') and is_live(['Live'])
     assert not is_live(['Other / Unknown']) and not is_live('') and not is_live(None) and not is_live(['Olive Oil'])
+
+
+def test_the_banner_finds_a_channels_picture_and_live(monkeypatch):
+    monkeypatch.setattr(tvrows.kodi, 'jsonrpc', lambda method, **params: {'channels': [
+        {'label': 'Sky Sports News', 'broadcastnow': {'thumbnail': 'https://i/ssn.jpg', 'genre': ['Live']}},
+        {'label': 'CNN', 'broadcastnow': {'thumbnail': '', 'genre': ['Other / Unknown']}}]})
+    assert tvrows.channel_now('Sky Sports News') == ('https://i/ssn.jpg', True)
+    assert tvrows.channel_now('CNN') == ('', False)
+    assert tvrows.channel_now('Nowhere') == ('', False)

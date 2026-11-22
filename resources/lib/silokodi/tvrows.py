@@ -802,6 +802,18 @@ def playing_channel():
     return None
 
 
+def channel_now(name):
+    """(picture, live) of what a channel shows now, by its name (the banner's
+    channel, browsed or playing): the guide's picture and Live category."""
+    from .channels import is_live
+    answer = kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=['broadcastnow']) or {}
+    for channel in answer.get('channels') or []:
+        if channel.get('label') == name:
+            now = channel.get('broadcastnow') or {}
+            return now.get('thumbnail') or '', is_live(now.get('genre'))
+    return '', False
+
+
 def playing_has_archive():
     """Whether the Live TV channel playing has catch-up (its provider's archive)."""
     channel = playing_channel()

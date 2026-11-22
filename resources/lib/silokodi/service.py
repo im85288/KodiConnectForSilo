@@ -1385,6 +1385,15 @@ class Service(object):
                 kodi.log_warning('TV page: catch-up: %s' % error)
                 archive = False
             kodi.set_property('tv.playing_archive', '1' if archive else '')
+            # The banner's picture and LIVE for the channel it shows, browsed
+            # (Up/Down) or playing: Kodi gives only the playing programme's.
+            try:
+                picture, live = tvrows.channel_now(channel) if channel else ('', False)
+            except Exception as error:  # the banner shows the logo
+                kodi.log_warning('TV banner: %s' % error)
+                picture, live = '', False
+            kodi.set_property('tv.banner_picture', picture)
+            kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
 
     def tv_watch_changed(self, channel, now=None):
