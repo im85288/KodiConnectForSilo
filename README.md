@@ -200,6 +200,20 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.26.0 (2026-11-22)
+- **Live TV banner, as Sky's:** Left and Right step through the channel's programmes, earlier (catch-up) and later,
+  in Skyline's banner window 1183 (`banner.py`, `mode=banner_step` / `banner_play`, published as `banner.*`). OK
+  plays an earlier one from catch-up, the one on now live, or sets or removes a later one's reminder.
+- **Pictures and LIVE:** the banner, the OK screen's tiles and the TV page carry the programme's picture and the
+  guide's Live category (`tv.banner_picture`, `tv.banner_live`).
+- **Start from the beginning and Coming up next** (`liveprompts.py`): tuning in to a catch-up channel more than
+  2 minutes into a programme (with 5 left) offers its start for 10 s (`startover.title`; OK in Skyline seeks and
+  sets `startover.done`); a programme's last 2 minutes note the next one for 20 s (`next.title`, `next.time`,
+  `next.picture`).
+- **TV page rows:** Recent channels, then one row for each of the guide's groups (up to five), Catch up and My
+  teams; Live sport now is gone, with its setting.
+- **Keys:** long OK in Live TV opens the TV guide; the quick guide (Left) and mini guide are gone from the keymap.
+
 ### v0.25.0 (2026-11-21)
 - **Catch up row (Skyline's TV page):** live matches that ended in the last 24 h (one card a match, its best feed)
   and what the six most recent channels showed in the last 6 h, only on channels with catch-up, newest first. A
