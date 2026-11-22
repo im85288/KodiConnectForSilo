@@ -199,9 +199,12 @@ def skin_layout(home_sections, libraries, library_sections, request_rows=None, r
     properties = {'silo.pages': ','.join(pages)}
     # Skyline's TV page: KodiConnectForSilo's own rows (tvrows.py). Not one of
     # Silo's pages (silo.pages): a skin shows it when Kodi has TV channels.
-    from .tvrows import ROWS as TV_ROWS
-    # A path a skin only tests is there (published rows load nothing from it).
-    pages['tv'] = [{'title': title, 'style': 'landscape', 'path': 'tv:%s' % key} for key, title in TV_ROWS]
+    from .tvrows import ROWS as TV_ROWS, saved_titles
+    # A path a skin only tests is there (published rows load nothing from it);
+    # a group row's title is its group's, as the TV rows last found it.
+    titles = saved_titles()
+    pages['tv'] = [{'title': titles.get(key, title), 'style': 'landscape', 'path': 'tv:%s' % key}
+                   for key, title in TV_ROWS]
     for page, path in collections.items():
         properties['silo.%s.collections' % page] = path
     for page in ('home', 'movies', 'series', 'requests', 'tv'):

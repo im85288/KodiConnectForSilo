@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Skyline's TV page: On now, Live sport now, Catch up and My teams, as cards.
+"""Skyline's TV page: Recent channels, a row for each of the guide's groups
+(every channel in it, by number, with what's on), Catch up and My teams, as
+cards.
 
 The guide and the playlist are the ones Kodi's IPTV Simple add-on reads (its
 instance settings say where): the playlist ties each guide id to a channel's
@@ -22,9 +24,15 @@ import xml.etree.ElementTree as ET
 
 from . import fileio, kodi
 
-TEAMS_ROW, ON_NOW_ROW, SPORT_ROW, CATCHUP_ROW = 'teams', 'onnow', 'sport', 'catchup'
-# My teams last: it's often a fixture days off, On now what's playing (the user's order).
-ROWS = ((ON_NOW_ROW, 'On now'), (SPORT_ROW, 'Live sport now'), (CATCHUP_ROW, 'Catch up'), (TEAMS_ROW, 'My teams'))
+TEAMS_ROW, RECENT_ROW, CATCHUP_ROW = 'teams', 'recent', 'catchup'
+# The guide's groups (the playlist's group-title), each a row of its channels,
+# in the playlist's order: their titles are the groups' names (group_titles).
+GROUP_ROWS = tuple('group%d' % n for n in range(1, 6))
+# Recent channels first, as Sky Stream's home; My teams last: it's often a
+# fixture days off (the user's order).
+ROWS = ((RECENT_ROW, 'Recent channels'),) + tuple((key, '') for key in GROUP_ROWS) + \
+    ((CATCHUP_ROW, 'Catch up'), (TEAMS_ROW, 'My teams'))
+TITLES_FILE = 'tv_rows.json'
 # Catch up: live matches that ended within SPORT_BACK, and what the most recent
 # RECENT_CATCHUP channels showed within RECENT_BACK, on channels with catch-up.
 SPORT_BACK = datetime.timedelta(hours=24)
@@ -489,13 +497,29 @@ def quote(text):
     return url_quote(text, safe='')
 
 
+def group_rows(channels, groups, now, pictures, known=(), leagues=()):
+    """{group row: [card]} and {group row: title}: each of the guide's
+    groups (the playlist's, in its order; groups: {channel name: group}),
+    every channel in it by number, with what's on, up to GROUP_ROWS."""
+    order = []
+    for group in (groups or {}).values():
+        if group and group not in order:
+            order.append(group)
+    cards, titles = {}, {}
+    for key, group in zip(GROUP_ROWS, order):
+        members = [c for name, c in channels.items() if (groups or {}).get(name) == group]
+        members.sort(key=lambda c: (c.get('channelnumber') or 10 ** 6, c.get('label') or ''))
+        cards[key] = [channel_card(c, now, pictures.get(c.get('label'), ''), known, leagues) for c in members[:CARDS]]
+        titles[key] = group
+    return cards, titles
+
+
 def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=(), fixtures=(),
-         unknown='channel not known yet', leagues=(), sport_groups=(), groups=None, ended=()):
+         unknown='channel not known yet', leagues=(), groups=None, ended=()):
     """{row: [card]} for the TV page. known: TheSportsDB's teams (theirs and
     the viewer's); fixtures: [(team, fixture)], the viewer's teams' next ones,
-    a card each until the guide lists them. sport_groups: the playlist groups
-    (groups: {channel name: group}) Live sport now keeps to, if any; My teams
-    looks in every group, so a team's match is never missed."""
+    a card each until the guide lists them. groups: {channel name: its
+    playlist group}, for the group rows (group_rows); TITLES: their titles."""
     pictures = pictures or {}
     channels = {c.get('label'): c for c in channel_list if not c.get('hidden')}
     window = MATCH_WINDOW.total_seconds()
@@ -514,24 +538,38 @@ def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=()
         seen.add(fixture['title'])
         team_cards.append((fixture['start'], fixture_card(fixture, team, now, reminded, unknown)))
     team_cards = [card for _, card in sorted(team_cards, key=lambda pair: pair[0])]
-    team_titles = {c['card.title'] for c in team_cards}
     recent = sorted((c for c in channels.values() if c.get('lastplayed')), key=lambda c: c['lastplayed'],
                     reverse=True)
-    on_now = [channel_card(c, now, pictures.get(c.get('label'), ''), known, leagues) for c in recent[:CARDS]]
-    airing = [e for e in entries if e['start'] <= now < e['stop']]
-    if sport_groups:
-        wanted = set(sport_groups)
-        airing = [e for e in airing if (groups or {}).get(e['name']) in wanted]
-    sport = [c for c in (match_card(m, channels, now, known=known, leagues=leagues) for m in group(airing, same_title))
-             if c and c['card.title'] not in team_titles]
-    sport.sort(key=lambda card: card['card.title'])
-    return {TEAMS_ROW: team_cards[:CARDS], ON_NOW_ROW: on_now, SPORT_ROW: sport[:CARDS],
-            CATCHUP_ROW: catchup(ended, channels, recent, now)}
+    out = {TEAMS_ROW: team_cards[:CARDS], RECENT_ROW: [channel_card(c, now, pictures.get(c.get('label'), ''), known,
+                                                                    leagues) for c in recent[:CARDS]],
+           CATCHUP_ROW: catchup(ended, channels, recent, now)}
+    cards, titles = group_rows(channels, groups, now, pictures, known, leagues)
+    out.update(cards)
+    out[TITLES] = titles
+    return out
+
+
+TITLES = 'titles'  # rows()' {group row: its title}, beside the rows' cards
+
+
+def saved_titles(path=None):
+    """The group rows' titles as last gathered, for the layout ({row: title})."""
+    import json
+    try:
+        with open(path or os.path.join(kodi.profile_dir(), TITLES_FILE), encoding='utf-8') as handle:
+            titles = json.load(handle)
+        return titles if isinstance(titles, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_titles(titles, path=None):
+    fileio.write_json(path or os.path.join(kodi.profile_dir(), TITLES_FILE), titles)
 
 
 # ----- gathering it -----
 
-CHANNEL_PROPERTIES = ['channel', 'icon', 'lastplayed', 'hidden', 'broadcastnow', 'hasarchive']
+CHANNEL_PROPERTIES = ['channel', 'icon', 'lastplayed', 'hidden', 'broadcastnow', 'hasarchive', 'channelnumber']
 
 
 def kodi_channels():
@@ -570,7 +608,7 @@ def sports(teams, now, path):
         return [], [], []
 
 
-def gather(teams, reminded=(), now=None, sport_groups=()):
+def gather(teams, reminded=(), now=None):
     """The TV page's cards, from Kodi's channels and IPTV Simple's playlist and guide."""
     now = now or datetime.datetime.now(datetime.timezone.utc)
     channel_list = kodi_channels()
@@ -584,7 +622,7 @@ def gather(teams, reminded=(), now=None, sport_groups=()):
         entries = programmes(read(guide), names, now, pictures, ended)
     known, fixtures, leagues = sports(teams, now, os.path.join(kodi.profile_dir(), 'sportsdb.json'))
     return rows(channel_list, entries, teams, now, reminded, pictures, known, fixtures, kodi.string(30228), leagues,
-                sport_groups, groups, ended)
+                groups, ended)
 
 
 def fill_reminders(cards, path=None):
@@ -846,40 +884,3 @@ def open_windowed(channel_id, attempts=1):
     finally:
         if before:
             kodi.jsonrpc('Settings.SetSettingValue', setting=FULL_SCREEN, value=before)
-
-
-SPORT_GROUPS = 'tv_sport_groups.json'
-
-
-def load_sport_groups(path=None):
-    """The playlist groups Live sport now keeps to ([]: every group)."""
-    import json
-    try:
-        with open(path or os.path.join(kodi.profile_dir(), SPORT_GROUPS), encoding='utf-8') as handle:
-            groups = json.load(handle)
-        return [g for g in groups if isinstance(g, str)] if isinstance(groups, list) else []
-    except (OSError, ValueError):
-        return []
-
-
-def save_sport_groups(groups, path=None):
-    path = path or os.path.join(kodi.profile_dir(), SPORT_GROUPS)
-    fileio.write_json(path, list(groups))
-
-
-def choose_sport_groups():
-    """Live sport now's groups, from a tick list of the playlist's (the
-    plugin's tv_sport_groups, a settings button)."""
-    import xbmcgui
-    playlist, _ = sources(kodi.addon_data_dir())
-    groups = sorted(set(playlist_groups(read(playlist).decode('utf-8', 'replace')).values())) if playlist else []
-    if not groups:
-        kodi.notify(kodi.string(30233))
-        return
-    chosen = set(load_sport_groups())
-    picked = xbmcgui.Dialog().multiselect(kodi.string(30229), groups,
-                                          preselect=[i for i, g in enumerate(groups) if g in chosen])
-    if picked is None:
-        return  # cancelled
-    save_sport_groups([groups[i] for i in picked])
-    kodi.set_property('tv.refresh', '1')

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Skyline's TV page: My teams, On now and Live sport now."""
+"""Skyline's TV page: Recent channels, the guide's groups, Catch up and My teams."""
 import datetime
 
 from resources.lib.silokodi import tvrows
@@ -73,22 +73,39 @@ def test_a_match_is_one_card_across_its_channels_english_first():
 def test_whole_names_only():
     rows = tvrows.rows(CHANNELS, entries(), ['Newcastle United'], NOW)
     assert all('Jets' not in c['card.title'] for c in rows[tvrows.TEAMS_ROW])
-    # Newcastle Jets' game is in Live sport now, not My teams.
-    assert 'Perth Glory v Newcastle Jets' in [c['card.title'] for c in rows[tvrows.SPORT_ROW]]
 
 
-def test_on_now_is_recent_channels_with_whats_on():
+def test_recent_channels_with_whats_on():
     rows = tvrows.rows(CHANNELS, entries(), [], NOW)
-    assert [c['card.title'] for c in rows[tvrows.ON_NOW_ROW]] == ['TNT Sports 1', 'Sky Sports Premier League']
-    assert rows[tvrows.ON_NOW_ROW][0]['percent'] == '50'
-    assert rows[tvrows.ON_NOW_ROW][0]['tv.play'].endswith('mode=play_channel&id=5')
+    assert [c['card.title'] for c in rows[tvrows.RECENT_ROW]] == ['TNT Sports 1', 'Sky Sports Premier League']
+    assert rows[tvrows.RECENT_ROW][0]['percent'] == '50'
+    assert rows[tvrows.RECENT_ROW][0]['tv.play'].endswith('mode=play_channel&id=5')
 
 
-def test_live_sport_now_leaves_out_my_teams_matches():
-    rows = tvrows.rows(CHANNELS, entries(), ['Newcastle United', 'Newcastle Utd'], NOW)
-    sport = [c['card.title'] for c in rows[tvrows.SPORT_ROW]]
-    assert 'Arsenal v Hull' in sport
-    assert 'Fulham v Newcastle Utd' not in sport
+def test_each_guide_group_is_a_row_of_its_channels_by_number():
+    groups = tvrows.playlist_groups(PLAYLIST)
+    channels = [dict(c, channelnumber=n) for c, n in zip(CHANNELS, (31, 41, 51, 2, 22, 61, 0))]
+    channels.append({'channelid': 8, 'label': 'Sky Sports Main Event', 'channelnumber': 1, 'icon': 'me.png',
+                     'broadcastnow': {'title': 'Darts', 'endtime': '2026-11-07 16:00:00'}})
+    groups['Sky Sports Main Event'] = 'UK | Sky Sports'
+    rows = tvrows.rows(channels, entries(), [], NOW, groups=groups)
+    titles = rows[tvrows.TITLES]
+    # The playlist's group order; a group's channels by their number.
+    assert [titles[k] for k in tvrows.GROUP_ROWS if k in titles] == [
+        'Live | English Premier League - EPL', 'Live | EPL Teams', 'USA | Peacock Events', 'UK | Sky Sports',
+        'UK | TNT Sports']
+    sky = rows[titles and [k for k, t in titles.items() if t == 'UK | Sky Sports'][0]]
+    assert [c['card.title'] for c in sky] == ['Sky Sports Main Event', 'Sky Sports Premier League']
+    assert sky[0]['card.sub'] == 'Darts' and sky[0]['left'] == '30 min left'
+    # Every channel, watched or not; a hidden one is left out.
+    assert all(c['card.title'] != 'Hidden' for k in tvrows.GROUP_ROWS for c in rows.get(k, []))
+
+
+def test_the_group_titles_are_kept_for_the_layout(tmp_path):
+    path = str(tmp_path / 'rows.json')
+    assert tvrows.saved_titles(path) == {}
+    tvrows.save_titles({'group1': 'Sky Sports'}, path)
+    assert tvrows.saved_titles(path) == {'group1': 'Sky Sports'}
 
 
 def test_titles_lose_competition_and_season():
@@ -125,8 +142,9 @@ def test_the_layout_has_the_tv_pages_rows_but_not_as_one_of_silos_pages():
     from resources.lib.silokodi.sync import skin_layout
     layout = skin_layout([], [], {})
     assert 'tv' not in layout['silo.pages'].split(',')
-    assert [layout['silo.tv.%d.title' % n] for n in (1, 2, 3, 4)] == ['On now', 'Live sport now', 'Catch up', 'My teams']
-    assert layout['silo.tv.5.title'] == ''
+    titles = [layout['silo.tv.%d.title' % n] for n in range(1, len(tvrows.ROWS) + 1)]
+    assert titles[0] == 'Recent channels' and titles[-2:] == ['Catch up', 'My teams']
+    assert layout['silo.tv.%d.title' % (len(tvrows.ROWS) + 1)] == ''
 
 
 def test_reminders_toggle_and_fall_due(tmp_path):
@@ -150,10 +168,10 @@ def test_pictures_are_the_programmes_and_logos_stay_logos():
     pictures = {}
     found = tvrows.programmes(GUIDE.encode(), tvrows.playlist_names(PLAYLIST), NOW, pictures)
     rows = tvrows.rows(CHANNELS, found, [], NOW, pictures=pictures)
-    tnt = rows[tvrows.ON_NOW_ROW][0]
+    tnt = rows[tvrows.RECENT_ROW][0]
     assert tnt['art.landscape'] == 'http://i/a.png'  # what TNT Sports 1 shows now
     assert tnt['tv.logo'] == 'tnt.png'
-    sky = rows[tvrows.ON_NOW_ROW][1]
+    sky = rows[tvrows.RECENT_ROW][1]
     assert sky['art.landscape'] == '' and sky['tv.logo'] == 'skypl.png'  # no picture: the logo, centred
 
 
@@ -259,31 +277,12 @@ def test_the_preview_follows_a_card_rested_on(monkeypatch):
     assert started == [12, 7]
 
 
-def test_live_sport_now_keeps_to_the_chosen_groups():
-    groups = tvrows.playlist_groups(PLAYLIST)
-    assert groups['TNT Sports 1'] == 'UK | TNT Sports'
-    every = tvrows.rows(CHANNELS, entries(), [], NOW)['sport']
-    kept = tvrows.rows(CHANNELS, entries(), [], NOW, sport_groups=['UK | TNT Sports'], groups=groups)['sport']
-    assert len(every) > len(kept) == 1 and 'Arsenal' in kept[0]['card.title']
-    # My teams looks in every group
-    teams = tvrows.rows(CHANNELS, entries(), ['Newcastle United', 'Newcastle Utd'], NOW,
-                        sport_groups=['UK | TNT Sports'], groups=groups)['teams']
-    assert teams
-
-
-def test_the_chosen_groups_are_kept(tmp_path):
-    path = str(tmp_path / 'g.json')
-    assert tvrows.load_sport_groups(path) == []
-    tvrows.save_sport_groups(['UK | Sky Sports', 'UK | TNT Sports'], path)
-    assert tvrows.load_sport_groups(path) == ['UK | Sky Sports', 'UK | TNT Sports']
-
-
 def test_a_live_card_says_how_long_is_left():
     channels = [dict(c) for c in CHANNELS]
     channels[4]['broadcastnow'] = dict(channels[4]['broadcastnow'], endtime='2026-11-07 16:05:00')
     rows = tvrows.rows(channels, entries(), ['Newcastle United', 'Newcastle Utd'], NOW)
-    assert rows[tvrows.ON_NOW_ROW][0]['left'] == '35 min left'  # TNT Sports 1, ends 16:05
-    assert rows[tvrows.ON_NOW_ROW][1]['left'] == ''  # its end isn't known
+    assert rows[tvrows.RECENT_ROW][0]['left'] == '35 min left'  # TNT Sports 1, ends 16:05
+    assert rows[tvrows.RECENT_ROW][1]['left'] == ''  # its end isn't known
     assert rows[tvrows.TEAMS_ROW][0]['left'] == '1 h 45 min left'  # live till 17:15
     assert rows[tvrows.TEAMS_ROW][1]['left'] == ''  # next week's
 

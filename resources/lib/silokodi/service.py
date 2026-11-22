@@ -1340,12 +1340,16 @@ class Service(object):
         try:
             started = time.time()
             reminded = set(tvrows.load_reminders())
-            cards = tvrows.gather(tvrows.team_names(kodi.setting('tv_teams')), reminded,
-                                  sport_groups=tvrows.load_sport_groups())
+            cards = tvrows.gather(tvrows.team_names(kodi.setting('tv_teams')), reminded)
+            titles = cards.pop(tvrows.TITLES, {})
             tvrows.fill_reminders(cards)
             props = {}
-            for row, (key, _) in enumerate(tvrows.ROWS, 1):
+            for row, (key, title) in enumerate(tvrows.ROWS, 1):
                 props.update(home_cards.row_properties(row, cards.get(key) or [], 'tv', tvrows.CARDS))
+                # A group row's title is its group's name (the layout's, from the last gather).
+                props['silo.tv.%d.title' % row] = titles.get(key, title)
+            if titles != tvrows.saved_titles():
+                tvrows.save_titles(titles)
             home = xbmcgui.Window(10000)
             with self.cards_lock:
                 changed = 0

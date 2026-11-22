@@ -140,10 +140,6 @@ def run(argv):
         # Skyline's TV page: a match on several channels.
         from .tvrows import watch
         return watch((params.get('ids') or '').split(','))
-    if mode == 'tv_sport_groups':
-        # A settings button: Live sport now's playlist groups, ticked.
-        from .tvrows import choose_sport_groups
-        return choose_sport_groups()
     if mode == 'tv_remind':
         return tv_remind(params.get('start') or '', (params.get('ids') or '').split(','), params.get('title') or '')
     if mode == 'previous_channel':
