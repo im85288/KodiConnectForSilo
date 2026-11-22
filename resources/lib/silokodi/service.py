@@ -1395,11 +1395,10 @@ class Service(object):
             kodi.set_property('tv.banner_picture', picture)
             kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
-        # The banner's stepped-to programme (banner.py) ends with the banner,
-        # browsing channels or showing the playing one (Info).
+        # The banner's stepped-to programme (banner.py) lasts until IDLE seconds
+        # without a key, or another channel (the skin keeps the banner up till then).
         from . import banner
-        banner.clear_if_stale(xbmc.getCondVisibility(
-            '[Player.ChannelPreviewActive | Player.ShowInfo | Window.IsActive(fullscreeninfo)]'), channel)
+        banner.clear_if_stale(xbmc.getCondVisibility('System.IdleTime(%d)' % banner.IDLE), channel)
 
     def tv_watch_changed(self, channel, now=None):
         """On now (the TV page's recent channels) rebuilt a moment after a

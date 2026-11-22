@@ -102,8 +102,13 @@ def play():
         kodi.notify('This programme isn\'t on catch-up')
 
 
-def clear_if_stale(browsing, channel_name):
-    """The service's: browsing ended, or moved to another channel."""
+IDLE = 8  # seconds without a key before the banner leaves a stepped-to programme
+
+
+def clear_if_stale(idle, channel_name):
+    """The service's: no key for IDLE seconds, or another channel shown. The
+    skin keeps the banner up while a programme is stepped to (Kodi's own
+    banner and preview time out sooner, and closed it mid-step)."""
     shown = kodi.get_property('banner.channel')
-    if shown and (not browsing or shown != channel_name):
+    if shown and (idle or shown != channel_name):
         clear()
