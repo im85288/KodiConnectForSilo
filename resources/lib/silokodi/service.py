@@ -1395,6 +1395,9 @@ class Service(object):
             kodi.set_property('tv.banner_picture', picture)
             kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
+        # The banner's stepped-to programme (banner.py) ends with browsing.
+        from . import banner
+        banner.clear_if_stale(xbmc.getCondVisibility('Player.ChannelPreviewActive'), channel)
 
     def tv_watch_changed(self, channel, now=None):
         """On now (the TV page's recent channels) rebuilt a moment after a

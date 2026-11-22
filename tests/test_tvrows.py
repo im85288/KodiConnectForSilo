@@ -350,3 +350,17 @@ def test_the_banner_finds_a_channels_picture_and_live(monkeypatch):
     assert tvrows.channel_now('Sky Sports News') == ('https://i/ssn.jpg', True)
     assert tvrows.channel_now('CNN') == ('', False)
     assert tvrows.channel_now('Nowhere') == ('', False)
+
+
+def test_the_banner_steps_through_a_channels_programmes():
+    from resources.lib.silokodi import banner
+    shows = [{'start': 1000, 'end': 2000, 'title': 'A'}, {'start': 2000, 'end': 3000, 'title': 'B'},
+             {'start': 3000, 'end': 4000, 'title': 'C'}]
+    assert banner.programme(shows, 2500, -1) == (shows[0], -1)  # earlier: catch-up
+    assert banner.programme(shows, 2500, 1) == (shows[2], 1)  # later
+    assert banner.programme(shows, 2500, -5) == (shows[0], -1)  # no further than the guide has
+    assert banner.programme(shows, 2500, 0) == (shows[1], 0)  # on now: the banner's own
+    assert banner.programme([], 2500, 1) == (None, 0)
+    assert banner.hint('past', True, False) == 'OK  Watch from the start'
+    assert banner.hint('past', False, False) == 'Not on catch-up'
+    assert banner.hint('future', False, True).startswith('Reminder set')

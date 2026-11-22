@@ -7,8 +7,11 @@
                   numbers). Kodi's Down / Up actions: with Kodi's "Confirm channel
                   switch" on (its default) they browse channels in the banner and OK
                   watches the one shown, as Sky's mini guide; off, they switch at once
-       Left       the quick guide (Kodi's channel list over the video)
-       Right      the channel watched before this one (KodiConnectForSilo) -->
+       Left       the quick guide (Kodi's channel list over the video); browsing
+                  channels in the banner, the shown channel's programme before
+                  (catch-up), as Sky's (KodiConnectForSilo's live_left)
+       Right      the channel watched before this one (KodiConnectForSilo); browsing
+                  channels in the banner, the programme after -->
 <keymap>
   <FullscreenLiveTV>
     <keyboard>
@@ -18,7 +21,7 @@
       <enter mod="longpress">ActivateWindow(1198)</enter>
       <up>Down</up>
       <down>Up</down>
-      <left>ActivateWindow(PVROSDChannels)</left>
+      <left>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=live_left)</left>
       <right>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=previous_channel)</right>
     </keyboard>
     <remote>
@@ -26,7 +29,7 @@
       <select mod="longpress">ActivateWindow(1198)</select>
       <up>Down</up>
       <down>Up</down>
-      <left>ActivateWindow(PVROSDChannels)</left>
+      <left>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=live_left)</left>
       <right>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=previous_channel)</right>
     </remote>
   </FullscreenLiveTV>
