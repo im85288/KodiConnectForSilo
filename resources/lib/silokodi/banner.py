@@ -64,11 +64,15 @@ def step(direction, now=None):
     before or after the one the banner shows."""
     channel = shown_channel()
     if not channel:
+        import xbmc
+        kodi.log('Banner: step %+d: no channel for "%s"' % (direction, xbmc.getInfoLabel('VideoPlayer.ChannelName')))
         return
     now = now or time.time()
     before = props()
     offset = int(before['offset'] or 0) if before['channel'] == channel.get('label') else 0
     show, offset = programme(channels.channel_broadcasts(channel), now, offset + direction)
+    kodi.log('Banner: step %+d on %s: %s' % (direction, channel.get('label'),
+                                             '%s (%+d)' % (show.get('title'), offset) if show else 'nothing'))
     if show is None or offset == 0:
         clear()
         return
@@ -111,4 +115,5 @@ def clear_if_stale(idle, channel_name):
     banner and preview time out sooner, and closed it mid-step)."""
     shown = kodi.get_property('banner.channel')
     if shown and (idle or shown != channel_name):
+        kodi.log('Banner: back to now (%s)' % ('idle' if idle else 'now showing %s' % channel_name))
         clear()
