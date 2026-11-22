@@ -335,3 +335,9 @@ def test_a_catch_up_card_plays_its_programme_from_kodis_guide(monkeypatch):
     assert calls[-1] == ('Player.Open', {'item': {'broadcastid': 71}})
     plugin.play_catchup('5', str(start + 60))  # gone from Kodi's guide
     assert calls[-1][0] == 'PVR.GetBroadcasts' and noticed
+
+
+def test_a_broadcast_is_live_by_its_genre():
+    from resources.lib.silokodi.channels import is_live
+    assert is_live(['Sports / Live']) and is_live('Live') and is_live(['Live'])
+    assert not is_live(['Other / Unknown']) and not is_live('') and not is_live(None) and not is_live(['Olive Oil'])

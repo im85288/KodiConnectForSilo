@@ -134,6 +134,12 @@ def day_header(day, today):
     return {-1: 'Yesterday', 0: 'Today', 1: 'Tomorrow'}.get(offset) or day_label(day)
 
 
+def is_live(genre):
+    """Whether a Kodi broadcast's genre ([text] or text) says it's shown live."""
+    texts = genre if isinstance(genre, list) else [genre or '']
+    return any(part.strip().lower() == 'live' for text in texts for part in str(text).split('/'))
+
+
 def schedule_rows(broadcasts, now, archive, local=None):
     """A channel's programmes (dicts with broadcastid, title, start, end in
     epoch seconds) as schedule rows, from CATCHUP_DAYS back to AHEAD_DAYS
@@ -156,7 +162,10 @@ def schedule_rows(broadcasts, now, archive, local=None):
         rows.append({'title': broadcast.get('title') or broadcast.get('label') or '', 'start': broadcast['start'],
                      'end': broadcast['end'], 'plot': broadcast.get('plot') or '', 'date': date, 'day': number,
                      'broadcastid': broadcast.get('broadcastid'), 'when': when,
-                     'archive': when == 'past' and archive})
+                     'archive': when == 'past' and archive,
+                     # The programme's picture, and whether it's shown live (the guide's
+                     # Live category, Kodi's genre with IPTV Simple's useEpgGenreText).
+                     'picture': broadcast.get('thumbnail') or '', 'live': is_live(broadcast.get('genre'))})
     return rows
 
 
@@ -223,7 +232,7 @@ def utc_seconds(stamp):
 def channel_broadcasts(channel):
     """The channel's programmes from Kodi's guide, with start and end as epoch seconds."""
     broadcasts = (kodi.jsonrpc('PVR.GetBroadcasts', channelid=channel['channelid'],
-                               properties=['title', 'starttime', 'endtime', 'plot'])
+                               properties=['title', 'starttime', 'endtime', 'plot', 'thumbnail', 'genre'])
                   or {}).get('broadcasts') or []
     for broadcast in broadcasts:
         broadcast['start'], broadcast['end'] = (utc_seconds(broadcast[key]) for key in ('starttime', 'endtime'))

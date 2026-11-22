@@ -323,9 +323,17 @@ def recent_channels(base, handle):
         now = channel.get('broadcastnow') or {}
         item = xbmcgui.ListItem(channel.get('label') or '', offscreen=True)
         item.setArt({'icon': channel.get('icon') or '', 'thumb': channel.get('icon') or ''})
+        import datetime
+        from . import tvrows
+        stop = tvrows.broadcast_stop(now)
         item.setProperties({'silo.channelid': str(channel['channelid']), 'silo.channel': channel.get('label') or '',
+                            'silo.number': str(channel.get('channelnumber') or ''),
                             'silo.now': now.get('title') or '',
-                            'silo.progress': str(int(now.get('progresspercentage') or 0))})
+                            'silo.progress': str(int(now.get('progresspercentage') or 0)),
+                            # As the TV page's cards: the programme's picture, its time left, live.
+                            'silo.picture': now.get('thumbnail') or '',
+                            'silo.left': tvrows.left(stop, datetime.datetime.now(datetime.timezone.utc)) if stop else '',
+                            'silo.live': '1' if channels.is_live(now.get('genre')) else ''})
         item.addContextMenuItems([(kodi.string(30168), 'RunPlugin(%s?mode=forget_channel&id=%d)'
                                    % (base, channel['channelid']))])
         xbmcplugin.addDirectoryItem(handle, '%s?mode=play_channel&id=%d' % (base, channel['channelid']), item,
@@ -441,7 +449,8 @@ def mini_grid(handle, number, group, shift=0, focus=None, now=None):
                               c + 'times': '%s – %s' % (at(row['start']), at(row['end'])),
                               c + 'timeline': '%s, %s – %s' % (channels.day_label(row['date']), at(row['start']), at(row['end'])),
                               c + 'broadcastid': str(row['broadcastid']), c + 'archive': '1' if row.get('archive') else '',
-                              c + 'cont': '1' if row['cont'] else ''})
+                              c + 'cont': '1' if row['cont'] else '', c + 'picture': row.get('picture') or '',
+                              c + 'live': '1' if row.get('live') else ''})
                 if row['when'] == 'now':
                     props[c + 'left'] = str(max(1, int((row['end'] - now) // 60)))
         item = xbmcgui.ListItem(channel.get('label') or '', offscreen=True)
