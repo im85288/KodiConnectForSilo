@@ -200,6 +200,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.27.0 (2026-11-22)
+- **TV guide logo:** Skyline's Sky Stream guide shows the focused programme's channel logo at its top; Kodi 21 has no
+  logo label for guide programmes (their `ListItem.Icon` is the picture), so a thread looks at the guide's focused
+  channel every 0.1 s and publishes `guide.logo` and `guide.logo_for` (logos from `tvrows.channel_logo`, cached with
+  the channels' current programmes).
+
 ### v0.26.1 (2026-11-22)
 - **Start from the beginning once:** leaving full screen (the TV guide) and coming back offered the same programme's
   start again; each channel's programme is offered once, and a channel started over stays behind live (no Coming up
