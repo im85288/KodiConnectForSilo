@@ -73,6 +73,8 @@ class Prompts(object):
         now = now or time.time()
         if not watching:
             if self.tuned:
+                if kodi.get_property('startover.title') or kodi.get_property('next.title'):
+                    kodi.log('Live TV: notes cleared: left full-screen Live TV')
                 self.tuned, self.channel = False, None
                 self.clear()
             return
