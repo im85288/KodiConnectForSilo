@@ -8,8 +8,8 @@
                   switch" on (its default) they browse channels in the banner and OK
                   watches the one shown, as Sky's mini guide; off, they switch at once
        Left/Right the programme before (catch-up) or after on the channel the
-                  banner shows, browsed or playing, as Sky's banner (Skyline's
-                  windows 1184 and 1185 open the banner as they step); OK plays
+                  banner shows, browsed or playing, as Sky's banner (they set
+                  silo.live.step; Skyline's timers open the banner and step); OK plays
                   an earlier one or sets a later one's reminder. The channel
                   watched before is first in OK's recent channels. -->
 <keymap>
@@ -21,16 +21,16 @@
       <enter mod="longpress">ActivateWindow(1198)</enter>
       <up>Down</up>
       <down>Up</down>
-      <left>ActivateWindow(1184)</left>
-      <right>ActivateWindow(1185)</right>
+      <left>SetProperty(silo.live.step,-1,home)</left>
+      <right>SetProperty(silo.live.step,1,home)</right>
     </keyboard>
     <remote>
       <select>ActivateWindow(1196)</select>
       <select mod="longpress">ActivateWindow(1198)</select>
       <up>Down</up>
       <down>Up</down>
-      <left>ActivateWindow(1184)</left>
-      <right>ActivateWindow(1185)</right>
+      <left>SetProperty(silo.live.step,-1,home)</left>
+      <right>SetProperty(silo.live.step,1,home)</right>
     </remote>
   </FullscreenLiveTV>
 </keymap>

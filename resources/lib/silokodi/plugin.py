@@ -145,8 +145,8 @@ def run(argv):
     if mode == 'previous_channel':
         return previous_channel()
     if mode == 'banner_step':
-        # Left (-1) or Right (+1) while browsing channels in the banner (Skyline's
-        # windows 1184 and 1185 tell, as the key is pressed): the programme before or after.
+        # Left (-1) or Right (+1) in Live TV (Skyline's silo_live_left/right timers,
+        # which open the banner first if it isn't up): the programme before or after.
         from . import banner
         return banner.step(-1 if params.get('dir') == '-1' else 1)
     if mode == 'banner_play':
