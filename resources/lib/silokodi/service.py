@@ -85,6 +85,7 @@ PUBLISHED_PAGES = {'home': 20, 'requests': 12}
 # load from their paths as Movies' rows do. Skyline's HOME_PUBLISHED_ROWS.
 PUBLISHED_ROWS = {'home': 4, 'requests': 12}
 TV_REFRESH = 300  # seconds between the TV page's rows (Skyline): what's on, and live matches
+GUIDE_LOGO_EVERY = 0.1  # seconds between looks at the guide's focused channel (watch_guide_logo)
 TV_WATCHED_WAIT = 5  # seconds after a channel is watched before On now is rebuilt
 # The playing title's details for a skin's player (silokodi.playing.*).
 PLAYING_FIELDS = ('rating.imdb', 'rating.tmdb', 'rating.rtcritic', 'badge1', 'badge2', 'badge3', 'dv', 'mpaa',
@@ -434,6 +435,9 @@ class Service(object):
         guide = threading.Thread(target=quick.QuickGuide(self.monitor).watch, name='silokodi-quick-guide')
         guide.daemon = True
         guide.start()
+        logos = threading.Thread(target=self.watch_guide_logo, name='silokodi-guide-logo')
+        logos.daemon = True
+        logos.start()
         ticks = 0
         while not self.monitor.waitForAbort(1):
             ticks += 1
@@ -1398,15 +1402,23 @@ class Service(object):
             kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
         self.tick_live_prompts(channel)
-        self.publish_guide_logo()
         # The banner window's programme (banner.py) goes as the window closes.
         from . import banner
         banner.clear_if_stale(xbmc.getCondVisibility('Window.IsActive(%d)' % banner.WINDOW))
 
+    def watch_guide_logo(self):
+        """Each tenth of a second (a second's tick showed the channel's name
+        before its logo): the guide's focused channel logo."""
+        while not self.monitor.waitForAbort(GUIDE_LOGO_EVERY):
+            try:
+                self.publish_guide_logo()
+            except Exception as error:  # never let it stop the service
+                kodi.log_warning('TV guide logo: %s' % error)
+
     def publish_guide_logo(self):
         """The TV guide's focused channel logo, for Skyline's details at its top
-        (guide.logo, with guide.logo_for naming its channel so the skin shows it
-        only once it matches)."""
+        (guide.logo, with guide.logo_for naming its channel: the skin shows the
+        logo, or the name when the channel has none, only once it matches)."""
         name = xbmc.getInfoLabel('Container(51).ListItem.ChannelName') \
             if xbmc.getCondVisibility('Window.IsActive(tvguide)') else ''
         if name == getattr(self, 'guide_logo_for', ''):
@@ -1418,7 +1430,7 @@ class Service(object):
             kodi.log_warning('TV guide logo: %s' % error)
             logo = ''
         kodi.set_property('guide.logo', logo)
-        kodi.set_property('guide.logo_for', name if logo else '')
+        kodi.set_property('guide.logo_for', name)
 
     def tick_live_prompts(self, channel):
         """Sky's notes over full-screen Live TV (liveprompts.py)."""
