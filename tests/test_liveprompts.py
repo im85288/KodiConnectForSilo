@@ -94,3 +94,27 @@ def test_leaving_full_screen_clears_the_notes_and_catch_up_is_left_alone(props):
     q.tick(True, NOW)
     q.tick(True, NOW + 1)
     assert calls == [] and not props.get('startover.title')
+
+
+def test_coming_back_from_the_guide_to_the_same_programme_offers_nothing_again(props):
+    p, _ = prompts(show('Match', NOW - 600, NOW + 3000), None)
+    p.tick(True, NOW)
+    assert props['startover.title'] == 'Match'
+    p.tick(False, NOW + 3)        # the guide
+    p.tick(True, NOW + 20)        # back to the channel
+    assert props['startover.title'] == ''
+
+
+def test_another_channel_then_back_offers_again_only_for_a_new_programme(props):
+    playing = {'id': 7}
+    shows = {7: show('Match', NOW - 600, NOW + 3000), 8: show('Golf', NOW - 900, NOW + 3000)}
+    p = liveprompts.Prompts(fetcher=lambda c: (shows[c], None, True), playing=lambda: playing['id'])
+    p.tick(True, NOW)
+    playing['id'] = 8
+    p.changed()
+    p.tick(True, NOW + 1)
+    assert props['startover.title'] == 'Golf'
+    playing['id'] = 7
+    p.changed()
+    p.tick(True, NOW + 2)
+    assert props['startover.title'] == 'Match'   # a different channel since: Sky offers again

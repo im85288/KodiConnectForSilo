@@ -60,6 +60,7 @@ class Prompts(object):
         self.fetched_at = 0
         self.started_over = False
         self.next_noted = None  # the next programme's start, once noted
+        self.offered = None     # (channel, programme start) whose start was offered
         self.startover_until = self.next_until = 0
 
     def clear(self):
@@ -75,7 +76,7 @@ class Prompts(object):
             if self.tuned:
                 if kodi.get_property('startover.title') or kodi.get_property('next.title'):
                     kodi.log('Live TV: notes cleared: left full-screen Live TV')
-                self.tuned, self.channel = False, None
+                self.tuned = False  # the channel is kept, to know it again on coming back
                 self.clear()
             return
         if kodi.get_property('startover.done'):
@@ -105,16 +106,21 @@ class Prompts(object):
             kodi.log('Live TV: coming up next: %s' % self.next.get('title'))
 
     def tune(self, now):
-        """Full-screen Live TV has started or changed channel (the service says so)."""
+        """Full-screen Live TV has started, changed channel or come back (from
+        the guide, say). Back on the same channel, a programme's start isn't
+        offered again, and one started over stays behind live."""
         self.clear()
-        self.started_over, self.next_noted, self.tuned = False, None, True
+        self.tuned = True
         channel = self.playing() if self.playing else None
+        if channel != self.channel:
+            self.started_over, self.next_noted = False, None
         self.channel = channel
         if channel is None:  # catch-up, or not a channel Kodi knows
             return
         self.now, self.next, self.archive = self.fetcher(channel)
         self.fetched_at = now
-        if offers_start(self.now, self.archive, now):
+        if offers_start(self.now, self.archive, now) and self.offered != (channel, self.now['start']):
+            self.offered = (channel, self.now['start'])
             self.startover_until = now + STARTOVER_SHOW
             kodi.set_property('startover.title', self.now.get('title') or self.now.get('label') or '')
             kodi.log('Live TV: offering the start of %s' % self.now.get('title'))
