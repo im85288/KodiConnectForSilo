@@ -370,3 +370,17 @@ def test_the_banner_steps_through_a_channels_programmes():
     assert banner.hint('past', False, False) == 'Not on catch-up'
     assert banner.hint('future', False, True).startswith('Reminder set')
     assert banner.hint('now', False, False) == 'OK  Watch'
+
+
+def test_a_channels_logo_comes_from_the_channels_cache(monkeypatch):
+    calls = []
+
+    def jsonrpc(method, **params):
+        calls.append(method)
+        return {'channels': [{'label': 'Sky Sports Main Event', 'icon': 'http://logo/main.png', 'broadcastnow': {}},
+                             {'label': 'Sky News', 'broadcastnow': {}}]}
+    monkeypatch.setattr(tvrows.kodi, 'jsonrpc', jsonrpc)
+    monkeypatch.setattr(tvrows, '_now_cache', {'at': 0, 'by_name': {}})
+    assert tvrows.channel_logo('Sky Sports Main Event', now=1000) == 'http://logo/main.png'
+    assert tvrows.channel_logo('Sky News', now=1001) == ''
+    assert calls == ['PVR.GetChannels']

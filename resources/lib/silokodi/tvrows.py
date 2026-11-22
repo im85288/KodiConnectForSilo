@@ -815,12 +815,21 @@ def channel_now(name, now=None):
     now = now or time.time()
     if name not in _now_cache['by_name'] or now - _now_cache['at'] >= NOW_KEEP:
         from .channels import is_live
-        answer = kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=['broadcastnow']) or {}
+        answer = kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=['broadcastnow', 'icon']) or {}
         _now_cache['by_name'] = {c.get('label'): ((c.get('broadcastnow') or {}).get('thumbnail') or '',
                                                   is_live((c.get('broadcastnow') or {}).get('genre')))
                                  for c in answer.get('channels') or []}
+        _now_cache['logos'] = {c.get('label'): c.get('icon') or '' for c in answer.get('channels') or []}
         _now_cache['at'] = now
     return _now_cache['by_name'].get(name, ('', False))
+
+
+def channel_logo(name, now=None):
+    """A channel's logo by its name, from channel_now's cache: Skyline's guide
+    shows the focused programme's channel logo, which Kodi 21 gives guide
+    programmes no label for (their ListItem.Icon is the picture)."""
+    channel_now(name, now)
+    return _now_cache.get('logos', {}).get(name, '')
 
 
 def playing_has_archive():

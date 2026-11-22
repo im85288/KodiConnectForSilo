@@ -1398,9 +1398,27 @@ class Service(object):
             kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
         self.tick_live_prompts(channel)
+        self.publish_guide_logo()
         # The banner window's programme (banner.py) goes as the window closes.
         from . import banner
         banner.clear_if_stale(xbmc.getCondVisibility('Window.IsActive(%d)' % banner.WINDOW))
+
+    def publish_guide_logo(self):
+        """The TV guide's focused channel logo, for Skyline's details at its top
+        (guide.logo, with guide.logo_for naming its channel so the skin shows it
+        only once it matches)."""
+        name = xbmc.getInfoLabel('Container(51).ListItem.ChannelName') \
+            if xbmc.getCondVisibility('Window.IsActive(tvguide)') else ''
+        if name == getattr(self, 'guide_logo_for', ''):
+            return
+        self.guide_logo_for = name
+        try:
+            logo = tvrows.channel_logo(name) if name else ''
+        except Exception as error:  # the skin shows the channel's name
+            kodi.log_warning('TV guide logo: %s' % error)
+            logo = ''
+        kodi.set_property('guide.logo', logo)
+        kodi.set_property('guide.logo_for', name if logo else '')
 
     def tick_live_prompts(self, channel):
         """Sky's notes over full-screen Live TV (liveprompts.py)."""
