@@ -200,6 +200,11 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.26.1 (2026-11-22)
+- **Start from the beginning once:** leaving full screen (the TV guide) and coming back offered the same programme's
+  start again; each channel's programme is offered once, and a channel started over stays behind live (no Coming up
+  next) until another channel is watched.
+
 ### v0.26.0 (2026-11-22)
 - **Live TV banner, as Sky's:** Left and Right step through the channel's programmes, earlier (catch-up) and later,
   in Skyline's banner window 1183 (`banner.py`, `mode=banner_step` / `banner_play`, published as `banner.*`). OK
