@@ -17,7 +17,7 @@ import xbmc
 import xbmcgui
 
 from . import catchup, jump, kodi, kodidb, mapping, migrate, quick, tracks, upnext, keymap
-from . import bigart, channels, commands, display, playeraudio, playersubs, skinoptions, theme, tvrows
+from . import bigart, channels, commands, display, liveprompts, playeraudio, playersubs, skinoptions, theme, tvrows
 from .theme import ThemePlayer
 from . import api
 from .api import ApiError, SignedOut, SiloClient
@@ -376,6 +376,8 @@ class Service(object):
         self.personal_due = True
         self.tv_publishing = False
         self.tv_follower = tvrows.Follower()  # the TV page's preview follows focus
+        self.live_prompts = liveprompts.Prompts(playing=tvrows.playing_channel)  # Start from the beginning, Coming up next
+        self.live_prompts_for = ''  # the channel they were for
         self.tv_watching = ('', False)  # Live TV's channel and whether full screen (tv_watch_changed)
         self.tv_rows_due = 0  # when On now is rebuilt for a channel watched (0: not due)
 
@@ -1395,9 +1397,20 @@ class Service(object):
             kodi.set_property('tv.banner_picture', picture)
             kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
+        self.tick_live_prompts(channel)
         # The banner window's programme (banner.py) goes as the window closes.
         from . import banner
         banner.clear_if_stale(xbmc.getCondVisibility('Window.IsActive(%d)' % banner.WINDOW))
+
+    def tick_live_prompts(self, channel):
+        """Sky's notes over full-screen Live TV (liveprompts.py)."""
+        if channel != self.live_prompts_for:
+            self.live_prompts_for = channel
+            self.live_prompts.changed()
+        try:
+            self.live_prompts.tick(bool(channel) and xbmc.getCondVisibility(liveprompts.WATCHING))
+        except Exception as error:  # the notes just don't show
+            kodi.log_warning('Live TV notes: %s' % error)
 
     def tv_watch_changed(self, channel, now=None):
         """On now (the TV page's recent channels) rebuilt a moment after a

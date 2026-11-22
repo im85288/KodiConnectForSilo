@@ -21,6 +21,8 @@ def bare_service(**attrs):
     service.tick_error = ('', 0)
     service.display_checked = True
     service.tv_watching, service.tv_rows_due = ('', False), 0
+    service.live_prompts = service_module.liveprompts.Prompts()
+    service.live_prompts_for = ''
     service.__dict__.update(attrs)
     return service
 
