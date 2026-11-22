@@ -369,3 +369,4 @@ def test_the_banner_steps_through_a_channels_programmes():
     assert banner.hint('past', True, False) == 'OK  Watch from the start'
     assert banner.hint('past', False, False) == 'Not on catch-up'
     assert banner.hint('future', False, True).startswith('Reminder set')
+    assert banner.hint('now', False, False) == 'OK  Watch'

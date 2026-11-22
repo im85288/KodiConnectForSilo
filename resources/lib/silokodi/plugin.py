@@ -150,9 +150,11 @@ def run(argv):
         from . import banner
         return banner.step(-1 if params.get('dir') == '-1' else 1)
     if mode == 'banner_play':
-        # OK on a programme the banner stepped to (Skyline's OK window passes it on).
+        # OK in Skyline's banner window: play, or set a reminder (the window stays).
         from . import banner
-        return banner.play()
+        if banner.play():
+            xbmc.executebuiltin('Dialog.Close(%d)' % banner.WINDOW)
+        return None
     if mode == 'forget_channel':
         return forget_channel(params.get('id'))
     if mode == 'schedule':

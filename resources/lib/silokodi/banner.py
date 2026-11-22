@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
-"""Skyline's Live TV banner, as Sky's: Left and Right step through the
-programmes of the channel it shows, browsed (Up/Down, Kodi's channel
-preview) or playing (Skyline opens the banner as they're pressed), earlier ones (catch-up plays them) and later ones (a reminder);
-OK on one plays it or sets its reminder. The programme shown is published as
-silokodi.banner.* for the skin; at the programme on now, or once browsing
-ends or moves to another channel (the service's clear_if_stale), they're
-cleared and the banner shows Kodi's own again. The quick guide (Left, as
-TiviMate's) is gone from the keys: Sky has none."""
+"""Skyline's Live TV banner window (1183), as Sky's banner: Left and Right
+step through the programmes of the channel the banner showed as they were
+first pressed (browsed with Up/Down, or playing), earlier ones (catch-up
+plays them) and later ones (a reminder); OK on one plays it or sets its
+reminder. Skyline notes that channel's name (Home's silo.live.for) and opens
+the window, which holds the keys; the programme is published as
+silokodi.banner.* for it. The service clears them once the window closes
+(clear_if_stale). The quick guide (Left, as TiviMate's) is gone from the
+keys: Sky has none."""
 import time
 
 from . import channels, kodi, tvrows
 
+WINDOW = 1183  # Skyline's banner window
 KEYS = ('title', 'times', 'plot', 'picture', 'live', 'when', 'archive', 'broadcastid', 'channelid', 'start',
-        'offset', 'channel', 'hint')
+        'offset', 'channel', 'number', 'logo', 'hint')
 
 
 def props():
@@ -24,11 +26,17 @@ def clear():
         kodi.set_property('banner.' + key, '')
 
 
-def shown_channel():
-    """The channel the banner shows (browsed or playing), from Kodi's channels: by name."""
+def shown_name():
+    """The channel Skyline noted as it opened the banner window, else the one Kodi shows."""
     import xbmc
-    name = xbmc.getInfoLabel('VideoPlayer.ChannelName')
-    answer = kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=['hasarchive']) or {}
+    import xbmcgui
+    return xbmcgui.Window(10000).getProperty('silo.live.for') or xbmc.getInfoLabel('VideoPlayer.ChannelName')
+
+
+def shown_channel(name):
+    """The channel by its name, from Kodi's channels."""
+    answer = kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv',
+                          properties=['hasarchive', 'icon', 'channelnumber']) or {}
     return next((c for c in answer.get('channels') or [] if c.get('label') == name), None)
 
 
@@ -56,16 +64,16 @@ def hint(when, archive, reminded):
         return 'OK  Watch from the start' if archive else 'Not on catch-up'
     if when == 'future':
         return 'Reminder set  ·  OK to remove' if reminded else 'OK  Remind me'
-    return ''
+    return 'OK  Watch'
 
 
 def step(direction, now=None):
-    """Left (-1) or Right (+1) while browsing: the shown channel's programme
-    before or after the one the banner shows."""
-    channel = shown_channel()
+    """Left (-1) or Right (+1): the noted channel's programme before or after
+    the one the window shows (from the one on now, as it opens)."""
+    name = shown_name()
+    channel = shown_channel(name)
     if not channel:
-        import xbmc
-        kodi.log('Banner: step %+d: no channel for "%s"' % (direction, xbmc.getInfoLabel('VideoPlayer.ChannelName')))
+        kodi.log('Banner: step %+d: no channel for "%s"' % (direction, name))
         return
     now = now or time.time()
     before = props()
@@ -73,8 +81,7 @@ def step(direction, now=None):
     show, offset = programme(channels.channel_broadcasts(channel), now, offset + direction)
     kodi.log('Banner: step %+d on %s: %s' % (direction, channel.get('label'),
                                              '%s (%+d)' % (show.get('title'), offset) if show else 'nothing'))
-    if show is None or offset == 0:
-        clear()
+    if show is None:
         return
     when = 'past' if show['end'] <= now else 'now' if show['start'] <= now else 'future'
     archive = when == 'past' and bool(channel.get('hasarchive'))
@@ -86,34 +93,35 @@ def step(direction, now=None):
               'live': '1' if channels.is_live(show.get('genre')) else '', 'when': when,
               'archive': '1' if archive else '', 'broadcastid': str(show.get('broadcastid') or ''),
               'channelid': str(channel['channelid']), 'start': str(int(show['start'])), 'offset': str(offset),
-              'channel': channel.get('label') or '', 'hint': hint(when, archive, reminded)}
+              'channel': channel.get('label') or '', 'number': str(channel.get('channelnumber') or ''),
+              'logo': channel.get('icon') or '', 'hint': hint(when, archive, reminded)}
     for key, value in values.items():
         kodi.set_property('banner.' + key, value)
 
 
 def play():
-    """OK on a programme the banner stepped to: an earlier one from catch-up,
-    a later one's reminder set or removed (the TV page's reminders)."""
+    """OK in the banner window: an earlier programme from catch-up, the one on
+    now its channel live, a later one's reminder set or removed (the TV
+    page's reminders). Whether the window should close."""
     shown = props()
     if shown['when'] == 'past' and shown['archive'] and shown['broadcastid'].isdigit():
-        clear()
         kodi.jsonrpc('Player.Open', item={'broadcastid': int(shown['broadcastid'])})
-    elif shown['when'] == 'future' and shown['start']:
+        return True
+    if shown['when'] == 'now' and shown['channelid'].isdigit():
+        kodi.jsonrpc('Player.Open', item={'channelid': int(shown['channelid'])})
+        return True
+    if shown['when'] == 'future' and shown['start']:
         on = tvrows.toggle_reminder(shown['start'], shown['channelid'], shown['title'])
         kodi.set_property('banner.hint', hint('future', False, on))
         kodi.set_property('tv.refresh', '1')  # the TV page's cards say so
-    elif shown['when'] == 'past':
+        return False
+    if shown['when'] == 'past':
         kodi.notify('This programme isn\'t on catch-up')
+    return False
 
 
-IDLE = 8  # seconds without a key before the banner leaves a stepped-to programme
-
-
-def clear_if_stale(idle, channel_name):
-    """The service's: no key for IDLE seconds, or another channel shown. The
-    skin keeps the banner up while a programme is stepped to (Kodi's own
-    banner and preview time out sooner, and closed it mid-step)."""
-    shown = kodi.get_property('banner.channel')
-    if shown and (idle or shown != channel_name):
-        kodi.log('Banner: back to now (%s)' % ('idle' if idle else 'now showing %s' % channel_name))
+def clear_if_stale(window_open):
+    """The service's: the banner window has closed."""
+    if not window_open and kodi.get_property('banner.channel'):
+        kodi.log('Banner: closed')
         clear()
