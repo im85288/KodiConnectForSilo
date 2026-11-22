@@ -480,8 +480,8 @@ class Service(object):
             self.sync_keymap()
         if ticks % 60 == 0:
             self.remind_tv()
+        self.publish_tv_title()  # the banner's picture as channels are browsed: each second
         if ticks % 2 == 0:
-            self.publish_tv_title()
             self.note_tv_watched()
         try:
             self.tv_follower.tick(time.time())
@@ -1395,9 +1395,11 @@ class Service(object):
             kodi.set_property('tv.banner_picture', picture)
             kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
-        # The banner's stepped-to programme (banner.py) ends with browsing.
+        # The banner's stepped-to programme (banner.py) ends with the banner,
+        # browsing channels or showing the playing one (Info).
         from . import banner
-        banner.clear_if_stale(xbmc.getCondVisibility('Player.ChannelPreviewActive'), channel)
+        banner.clear_if_stale(xbmc.getCondVisibility(
+            '[Player.ChannelPreviewActive | Player.ShowInfo | Window.IsActive(fullscreeninfo)]'), channel)
 
     def tv_watch_changed(self, channel, now=None):
         """On now (the TV page's recent channels) rebuilt a moment after a

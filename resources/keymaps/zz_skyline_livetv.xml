@@ -7,12 +7,11 @@
                   numbers). Kodi's Down / Up actions: with Kodi's "Confirm channel
                   switch" on (its default) they browse channels in the banner and OK
                   watches the one shown, as Sky's mini guide; off, they switch at once
-       Left       the quick guide (Kodi's channel list over the video); browsing
-                  channels in the banner, the shown channel's programme before
-                  (catch-up), as Sky's
-       Right      the channel watched before this one (KodiConnectForSilo); browsing
-                  channels in the banner, the programme after
-       (Skyline's windows 1184 and 1185 decide which, as the key is pressed.) -->
+       Left/Right the programme before (catch-up) or after on the channel the
+                  banner shows, browsed or playing, as Sky's banner (Skyline's
+                  windows 1184 and 1185 open the banner as they step); OK plays
+                  an earlier one or sets a later one's reminder. The channel
+                  watched before is first in OK's recent channels. -->
 <keymap>
   <FullscreenLiveTV>
     <keyboard>

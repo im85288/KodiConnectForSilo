@@ -802,16 +802,25 @@ def playing_channel():
     return None
 
 
-def channel_now(name):
+NOW_KEEP = 60  # seconds the channels' current pictures are kept (channel_now)
+_now_cache = {'at': 0, 'by_name': {}}
+
+
+def channel_now(name, now=None):
     """(picture, live) of what a channel shows now, by its name (the banner's
-    channel, browsed or playing): the guide's picture and Live category."""
-    from .channels import is_live
-    answer = kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=['broadcastnow']) or {}
-    for channel in answer.get('channels') or []:
-        if channel.get('label') == name:
-            now = channel.get('broadcastnow') or {}
-            return now.get('thumbnail') or '', is_live(now.get('genre'))
-    return '', False
+    channel, browsed or playing): the guide's picture and Live category. Every
+    channel's, read from Kodi at most each NOW_KEEP seconds (or for a channel
+    not seen), so browsing channels in the banner needs no lookup."""
+    import time
+    now = now or time.time()
+    if name not in _now_cache['by_name'] or now - _now_cache['at'] >= NOW_KEEP:
+        from .channels import is_live
+        answer = kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=['broadcastnow']) or {}
+        _now_cache['by_name'] = {c.get('label'): ((c.get('broadcastnow') or {}).get('thumbnail') or '',
+                                                  is_live((c.get('broadcastnow') or {}).get('genre')))
+                                 for c in answer.get('channels') or []}
+        _now_cache['at'] = now
+    return _now_cache['by_name'].get(name, ('', False))
 
 
 def playing_has_archive():

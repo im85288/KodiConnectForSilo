@@ -344,12 +344,17 @@ def test_a_broadcast_is_live_by_its_genre():
 
 
 def test_the_banner_finds_a_channels_picture_and_live(monkeypatch):
-    monkeypatch.setattr(tvrows.kodi, 'jsonrpc', lambda method, **params: {'channels': [
+    asked = []
+    monkeypatch.setattr(tvrows, '_now_cache', {'at': 0, 'by_name': {}})
+    monkeypatch.setattr(tvrows.kodi, 'jsonrpc', lambda method, **params: asked.append(method) or {'channels': [
         {'label': 'Sky Sports News', 'broadcastnow': {'thumbnail': 'https://i/ssn.jpg', 'genre': ['Live']}},
         {'label': 'CNN', 'broadcastnow': {'thumbnail': '', 'genre': ['Other / Unknown']}}]})
-    assert tvrows.channel_now('Sky Sports News') == ('https://i/ssn.jpg', True)
-    assert tvrows.channel_now('CNN') == ('', False)
-    assert tvrows.channel_now('Nowhere') == ('', False)
+    assert tvrows.channel_now('Sky Sports News', now=1000) == ('https://i/ssn.jpg', True)
+    assert tvrows.channel_now('CNN', now=1010) == ('', False)
+    assert len(asked) == 1  # browsing on: kept, no lookup
+    assert tvrows.channel_now('Nowhere', now=1020) == ('', False) and len(asked) == 2  # a channel not seen
+    tvrows.channel_now('CNN', now=1000 + tvrows.NOW_KEEP + 30)
+    assert len(asked) == 3  # a minute on: read again
 
 
 def test_the_banner_steps_through_a_channels_programmes():

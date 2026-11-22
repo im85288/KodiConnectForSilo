@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Skyline's Live TV banner, as Sky's: browsing channels in it (Up/Down, Kodi's
-channel preview), Left and Right step through the shown channel's
-programmes, earlier ones (catch-up plays them) and later ones (a reminder);
+"""Skyline's Live TV banner, as Sky's: Left and Right step through the
+programmes of the channel it shows, browsed (Up/Down, Kodi's channel
+preview) or playing (Skyline opens the banner as they're pressed), earlier ones (catch-up plays them) and later ones (a reminder);
 OK on one plays it or sets its reminder. The programme shown is published as
 silokodi.banner.* for the skin; at the programme on now, or once browsing
 ends or moves to another channel (the service's clear_if_stale), they're
-cleared and the banner shows Kodi's own again."""
+cleared and the banner shows Kodi's own again. The quick guide (Left, as
+TiviMate's) is gone from the keys: Sky has none."""
 import time
 
 from . import channels, kodi, tvrows
