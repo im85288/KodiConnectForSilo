@@ -336,27 +336,3 @@ def test_a_catch_up_card_plays_its_programme_from_kodis_guide(monkeypatch):
     assert calls[-1] == ('Player.Open', {'item': {'broadcastid': 71}})
     plugin.play_catchup('5', str(start + 60))  # gone from Kodi's guide
     assert calls[-1][0] == 'PVR.GetBroadcasts' and noticed
-
-
-def test_after_leaving_live_tv_the_preview_waits_for_the_stop(monkeypatch):
-    import xbmc
-    playing, waits, opened = [True, True, True], [], []
-
-    class Monitor(object):
-        def waitForAbort(self, seconds=None):
-            waits.append(seconds)
-            if playing:
-                playing.pop()  # the stop finishes after three quarter seconds
-            return False
-    monkeypatch.setattr(xbmc, 'Monitor', Monitor)
-    monkeypatch.setattr(xbmc, 'getCondVisibility', lambda condition: bool(playing) if condition == 'Player.HasMedia' else False)
-    monkeypatch.setattr(tvrows.kodi, 'jsonrpc', lambda method, **params: {'channels': [dict(c) for c in CHANNELS]})
-    from resources.lib.silokodi import channels
-    monkeypatch.setattr(channels, 'last_watched', lambda: {5: 2000})
-    monkeypatch.setattr(tvrows.kodi, 'get_property', lambda key: '')
-    monkeypatch.setattr(tvrows, 'open_windowed', lambda channel, attempts=1: opened.append(channel))
-    tvrows.preview(after_stop=True)
-    assert waits == [0.25, 0.25, 0.25] and opened == [5]
-    playing[:] = [True]
-    tvrows.preview()  # opening the TV tab: something playing is left alone
-    assert opened == [5]

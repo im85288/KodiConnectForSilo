@@ -135,7 +135,7 @@ def run(argv):
     if mode == 'tv_preview':
         # Skyline's TV page opened: the last channel watched, in its preview box.
         from .tvrows import preview
-        return preview(after_stop=params.get('after') == 'stop')
+        return preview()
     if mode == 'tv_watch':
         # Skyline's TV page: a match on several channels.
         from .tvrows import watch
