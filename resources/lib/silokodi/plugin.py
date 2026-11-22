@@ -143,17 +143,12 @@ def run(argv):
     if mode == 'tv_remind':
         return tv_remind(params.get('start') or '', (params.get('ids') or '').split(','), params.get('title') or '')
     if mode == 'previous_channel':
-        # Right in Live TV; browsing channels in the banner, the next programme.
-        if xbmc.getCondVisibility('Player.ChannelPreviewActive'):
-            from . import banner
-            return banner.step(1)
         return previous_channel()
-    if mode == 'live_left':
-        # Left in Live TV: the quick guide; browsing channels in the banner, the programme before.
-        if xbmc.getCondVisibility('Player.ChannelPreviewActive'):
-            from . import banner
-            return banner.step(-1)
-        return xbmc.executebuiltin('ActivateWindow(PVROSDChannels)')
+    if mode == 'banner_step':
+        # Left (-1) or Right (+1) while browsing channels in the banner (Skyline's
+        # windows 1184 and 1185 tell, as the key is pressed): the programme before or after.
+        from . import banner
+        return banner.step(-1 if params.get('dir') == '-1' else 1)
     if mode == 'banner_play':
         # OK on a programme the banner stepped to (Skyline's OK window passes it on).
         from . import banner

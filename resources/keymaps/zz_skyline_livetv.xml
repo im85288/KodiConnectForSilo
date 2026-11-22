@@ -9,9 +9,10 @@
                   watches the one shown, as Sky's mini guide; off, they switch at once
        Left       the quick guide (Kodi's channel list over the video); browsing
                   channels in the banner, the shown channel's programme before
-                  (catch-up), as Sky's (KodiConnectForSilo's live_left)
+                  (catch-up), as Sky's
        Right      the channel watched before this one (KodiConnectForSilo); browsing
-                  channels in the banner, the programme after -->
+                  channels in the banner, the programme after
+       (Skyline's windows 1184 and 1185 decide which, as the key is pressed.) -->
 <keymap>
   <FullscreenLiveTV>
     <keyboard>
@@ -21,16 +22,16 @@
       <enter mod="longpress">ActivateWindow(1198)</enter>
       <up>Down</up>
       <down>Up</down>
-      <left>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=live_left)</left>
-      <right>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=previous_channel)</right>
+      <left>ActivateWindow(1184)</left>
+      <right>ActivateWindow(1185)</right>
     </keyboard>
     <remote>
       <select>ActivateWindow(1196)</select>
       <select mod="longpress">ActivateWindow(1198)</select>
       <up>Down</up>
       <down>Up</down>
-      <left>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=live_left)</left>
-      <right>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=previous_channel)</right>
+      <left>ActivateWindow(1184)</left>
+      <right>ActivateWindow(1185)</right>
     </remote>
   </FullscreenLiveTV>
 </keymap>
