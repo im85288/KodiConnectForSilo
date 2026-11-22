@@ -713,11 +713,21 @@ def last_channel(channel_list):
 TV_PAGE_SHOWN = 'Window.IsActive(home) + String.IsEqual(Window(Home).Property(silo.page),tv)'
 
 
-def preview():
+STOP_WAIT = 5  # seconds the preview waits for Live TV's stop, after leaving it
+
+
+def preview(after_stop=False):
     """Skyline's TV page: the last channel watched, playing in the page's
     preview box. Kodi switches to full screen as a channel starts (its PVR
-    setting): off for this one start, as it was once the channel plays."""
+    setting): off for this one start, as it was once the channel plays.
+    after_stop: Live TV has just been left (Skyline's guide, Back twice),
+    its stop still under way: wait up to STOP_WAIT for it first."""
     import xbmc
+    if after_stop:
+        monitor = xbmc.Monitor()
+        for _ in range(STOP_WAIT * 4):
+            if not xbmc.getCondVisibility('Player.HasMedia') or monitor.waitForAbort(0.25):
+                break
     if xbmc.getCondVisibility('Player.HasMedia'):
         kodi.log('TV preview: something is playing already')
         return
