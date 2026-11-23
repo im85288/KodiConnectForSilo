@@ -109,3 +109,21 @@ def test_a_preview_isnt_watching(tmp_path, monkeypatch):
     assert channels.without_previews({7: 900}, {'7': {'at': 1100, 'before': 500}}) == {7: 900}
     channels.note_watched(7)  # full screen
     assert channels.without_previews({7: 1100, 8: 1001}, channels.load_previews()) == {7: 1100}
+
+
+def test_restart_offers_catch_up_channels_well_into_a_programme_recent_first():
+    from resources.lib.silokodi import plugin
+    now = 1_800_000_000
+    import time as _t
+    def at(epoch):
+        return _t.strftime('%Y-%m-%d %H:%M:%S', _t.gmtime(epoch))
+    def channel(cid, number, archive, start, end, hidden=False):
+        return {'channelid': cid, 'channelnumber': number, 'hasarchive': archive, 'hidden': hidden,
+                'broadcastnow': {'title': 'P%d' % cid, 'starttime': at(start), 'endtime': at(end)}}
+    found = [channel(1, 1, True, now - 1800, now + 1800),     # in
+             channel(2, 2, False, now - 1800, now + 1800),    # no catch-up
+             channel(3, 3, True, now - 60, now + 3600),       # only just begun
+             channel(4, 4, True, now - 3000, now + 300),      # nearly over
+             channel(5, 5, True, now - 900, now + 1800)]      # in, watched more recently
+    picked = plugin.restart_choices(found, {5: 2000, 1: 1000}, now)
+    assert [c['channelid'] for c, *_ in picked] == [5, 1]

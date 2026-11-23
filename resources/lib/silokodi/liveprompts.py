@@ -1,27 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Sky's two notes over full-screen Live TV, for Skyline to draw:
-
-* Start from the beginning: tuning to a channel with catch-up partway through
-  a programme offers its start for STARTOVER_SHOW seconds (OK in the player,
-  Skyline's window 1196, seeks to it and says so with startover.done).
-* Coming up next: in a programme's last NEXT_BEFORE seconds, the next one's
-  title, start and picture for NEXT_SHOW seconds.
+"""Sky's Coming up next over full-screen Live TV, for Skyline to draw: in a
+programme's last NEXT_BEFORE seconds, the next one's title, start and picture
+for NEXT_SHOW seconds. (Its Start from the beginning note went: the TV
+guide's "Restart what's on now" row does that, as Sky Stream's.)
 
 The service calls tick() each second. The channel's programmes are asked of
-Kodi only as the channel or its programme changes. Once a programme has been
-started over, the channel plays behind live, so no Coming up next shows on it
-(the guide's times would be early) until the channel changes."""
+Kodi only as the channel or its programme changes."""
 import time
 
 from . import channels, kodi
 
-STARTOVER_AFTER = 120  # seconds into a programme before its start is offered
-STARTOVER_LEFT = 300   # not when less than this is left
-STARTOVER_SHOW = 10
 NEXT_BEFORE = 120      # seconds before the programme ends
 NEXT_SHOW = 20
 REFETCH = 30           # at most this often while the guide has nothing on now
-KEYS = ('startover.title', 'next.title', 'next.time', 'next.picture')
+KEYS = ('next.title', 'next.time', 'next.picture')
 WATCHING = 'Window.IsActive(fullscreenvideo) + VideoPlayer.Content(LiveTV) + !Player.ChannelPreviewActive'
 
 
@@ -40,10 +32,6 @@ def fetch(channelid):
     return shows[0], shows[1], bool(details.get('hasarchive'))
 
 
-def offers_start(show, archive, now):
-    return bool(show and archive and now - show['start'] >= STARTOVER_AFTER and show['end'] - now >= STARTOVER_LEFT)
-
-
 def shows_next(show, upcoming, now):
     return bool(show and upcoming and 0 < show['end'] - now <= NEXT_BEFORE)
 
@@ -58,31 +46,25 @@ class Prompts(object):
         self.now = self.next = None
         self.archive = False
         self.fetched_at = 0
-        self.started_over = False
         self.next_noted = None  # the next programme's start, once noted
-        self.offered = None     # (channel, programme start) whose start was offered
-        self.startover_until = self.next_until = 0
+        self.next_until = 0
 
     def clear(self):
         for key in KEYS:
             if kodi.get_property(key):
                 kodi.set_property(key, '')
-        self.startover_until = self.next_until = 0
+        self.next_until = 0
 
     def tick(self, watching, now=None):
         """watching: full-screen Live TV, not browsing (WATCHING)."""
         now = now or time.time()
         if not watching:
             if self.tuned:
-                if kodi.get_property('startover.title') or kodi.get_property('next.title'):
+                if kodi.get_property('next.title'):
                     kodi.log('Live TV: notes cleared: left full-screen Live TV')
                 self.tuned = False  # the channel is kept, to know it again on coming back
                 self.clear()
             return
-        if kodi.get_property('startover.done'):
-            kodi.set_property('startover.done', '')
-            kodi.set_property('startover.title', '')
-            self.startover_until, self.started_over = 0, True
         if not self.tuned:
             self.tune(now)
         if self.channel is None:
@@ -90,14 +72,11 @@ class Prompts(object):
         if (self.now is None or now >= self.now['end']) and now - self.fetched_at >= REFETCH:
             self.now, self.next, self.archive = self.fetcher(self.channel)
             self.fetched_at = now
-        if self.startover_until and now >= self.startover_until:
-            kodi.set_property('startover.title', '')
-            self.startover_until = 0
         if self.next_until and now >= self.next_until:
             for key in ('next.title', 'next.time', 'next.picture'):
                 kodi.set_property(key, '')
             self.next_until = 0
-        if not self.started_over and shows_next(self.now, self.next, now) and self.next_noted != self.next['start']:
+        if shows_next(self.now, self.next, now) and self.next_noted != self.next['start']:
             self.next_noted = self.next['start']
             self.next_until = now + NEXT_SHOW
             kodi.set_property('next.title', self.next.get('title') or self.next.get('label') or '')
@@ -107,23 +86,17 @@ class Prompts(object):
 
     def tune(self, now):
         """Full-screen Live TV has started, changed channel or come back (from
-        the guide, say). Back on the same channel, a programme's start isn't
-        offered again, and one started over stays behind live."""
+        the guide, say)."""
         self.clear()
         self.tuned = True
         channel = self.playing() if self.playing else None
         if channel != self.channel:
-            self.started_over, self.next_noted = False, None
+            self.next_noted = None
         self.channel = channel
         if channel is None:  # catch-up, or not a channel Kodi knows
             return
         self.now, self.next, self.archive = self.fetcher(channel)
         self.fetched_at = now
-        if offers_start(self.now, self.archive, now) and self.offered != (channel, self.now['start']):
-            self.offered = (channel, self.now['start'])
-            self.startover_until = now + STARTOVER_SHOW
-            kodi.set_property('startover.title', self.now.get('title') or self.now.get('label') or '')
-            kodi.log('Live TV: offering the start of %s' % self.now.get('title'))
 
     def changed(self):
         """The channel playing has changed: tune again on the next tick."""

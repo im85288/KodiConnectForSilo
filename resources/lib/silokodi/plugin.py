@@ -125,6 +125,8 @@ def run(argv):
         return widget(handle, params.get('section') or 'continue_watching', params.get('library'),
                       params.get('collection'), params.get('title'), raw_tail(argv, 'exclude_show'),
                       params.get('person'), params.get('type'))
+    if mode == 'restart_now':
+        return restart_now(base, handle)
     if mode == 'recent_channels':
         return recent_channels(base, handle)
     if mode == 'play_channel':
@@ -416,6 +418,51 @@ def schedule_days(handle, number, name):
             item.setProperties({'silo.day': str(row['day']), 'silo.first': str(index + 1),
                                 'silo.today': '1' if row['today'] else ''})
             xbmcplugin.addDirectoryItem(handle, '', item, isFolder=False)
+    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+RESTART_AFTER = 5 * 60   # a programme this far in is worth restarting
+RESTART_LEFT = 10 * 60   # not when this little is left
+RESTART_CARDS = 12
+
+
+def restart_choices(found, watched, now):
+    """Skyline's guide's "Restart what's on now", as Sky Stream's: the
+    programmes on now on catch-up channels, started RESTART_AFTER ago with
+    RESTART_LEFT to go; the channels watched most recently first, then by
+    number. [(channel, programme, its start and end epoch seconds)]."""
+    from .channels import utc_seconds
+    out = []
+    for channel in found:
+        on = channel.get('broadcastnow') or {}
+        if channel.get('hidden') or not channel.get('hasarchive') or not on.get('starttime') or not on.get('endtime'):
+            continue
+        start, end = utc_seconds(on['starttime']), utc_seconds(on['endtime'])
+        if now - start >= RESTART_AFTER and end - now >= RESTART_LEFT:
+            out.append((channel, on, start, end))
+    out.sort(key=lambda c: (-watched.get(c[0].get('channelid'), 0), c[0].get('channelnumber') or 9999))
+    return out[:RESTART_CARDS]
+
+
+def restart_now(base, handle):
+    """The guide's restart row's cards: OK plays the programme from its start
+    (play_catchup, as the TV page's Catch up cards)."""
+    import time
+    from . import tvrows
+    found = tv_channels(CHANNEL_FIELDS + ['hasarchive'])
+    for channel, on, start, end in restart_choices(found, channels.last_watched(), time.time()):
+        title = tvrows.without_marks(on.get('title') or '')
+        item = xbmcgui.ListItem(title, offscreen=True)
+        picture = on.get('thumbnail') or ''
+        item.setArt({'thumb': picture, 'fanart': picture, 'icon': channel.get('icon') or ''})
+        started = time.strftime('%H:%M', time.localtime(start))
+        item.setProperties({'silo.channelid': str(channel['channelid']), 'silo.start': str(int(start)),
+                            'silo.channel': channel.get('label') or '', 'silo.logo': channel.get('icon') or '',
+                            'silo.started': 'Started at %s' % started, 'silo.plot': on.get('plot') or '',
+                            'silo.minutes': str(int((end - start) // 60)),
+                            'silo.live': '1' if channels.is_live(on.get('genre')) else ''})
+        xbmcplugin.addDirectoryItem(handle, '%s?mode=play_catchup&channel=%d&start=%d'
+                                    % (base, channel['channelid'], start), item, isFolder=False)
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
 
 
