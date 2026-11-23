@@ -460,7 +460,7 @@ def plain_channel_card(channel, now, picture=''):
             'card.wide_sub': title,
             'hero.title': without_marks(title) or channel.get('label') or '',
             'hero.meta': channel.get('label') or '',
-            'hero.facts': '  ·  '.join(part for part in (channel.get('label') or '', times(on)) if part),
+            'hero.facts': '  ·  '.join(part for part in (channel.get('label') or '', '' if lead_in else times(on)) if part),
             'plot': on.get('plot') or '',
             'percent': str(int(progress)) if progress and not lead_in else '',
             'left': starts_in(broadcast_stop(on), now) if lead_in else left(broadcast_stop(on), now),
@@ -518,14 +518,18 @@ def quote(text):
 def group_rows(channels, groups, now, pictures, known=(), leagues=()):
     """{group row: [card]} and {group row: title}: each of the guide's
     groups (the playlist's, in its order; groups: {channel name: group}),
-    every channel in it by number, with what's on, up to GROUP_ROWS."""
+    every channel in it by number, with what's on, up to GROUP_ROWS. A
+    group with nothing on any of its channels has no row: the Match day
+    channel's guide is empty between its team's matches."""
     order = []
     for group in (groups or {}).values():
         if group and group not in order:
             order.append(group)
+    in_group = {group: [c for name, c in channels.items() if (groups or {}).get(name) == group] for group in order}
+    order = [group for group in order if any((c.get('broadcastnow') or {}).get('title') for c in in_group[group])]
     cards, titles = {}, {}
     for key, group in zip(GROUP_ROWS, order):
-        members = [c for name, c in channels.items() if (groups or {}).get(name) == group]
+        members = in_group[group]
         members.sort(key=lambda c: (c.get('channelnumber') or 10 ** 6, c.get('label') or ''))
         cards[key] = [channel_card(c, now, pictures.get(c.get('label'), ''), known, leagues) for c in members[:CARDS]]
         titles[key] = group

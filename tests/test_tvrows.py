@@ -85,6 +85,8 @@ def test_recent_channels_with_whats_on():
 def test_each_guide_group_is_a_row_of_its_channels_by_number():
     groups = tvrows.playlist_groups(PLAYLIST)
     channels = [dict(c, channelnumber=n) for c, n in zip(CHANNELS, (31, 41, 51, 2, 22, 61, 0))]
+    for channel in channels:  # something on each (a group with nothing on has no row)
+        channel.setdefault('broadcastnow', {'title': 'Programme'})
     channels.append({'channelid': 8, 'label': 'Sky Sports Main Event', 'channelnumber': 1, 'icon': 'me.png',
                      'broadcastnow': {'title': 'Darts', 'endtime': '2026-11-07 16:00:00'}})
     groups['Sky Sports Main Event'] = 'UK | Sky Sports'
@@ -99,6 +101,18 @@ def test_each_guide_group_is_a_row_of_its_channels_by_number():
     assert sky[0]['card.sub'] == 'Darts' and sky[0]['left'] == '30 min left'
     # Every channel, watched or not; a hidden one is left out.
     assert all(c['card.title'] != 'Hidden' for k in tvrows.GROUP_ROWS for c in rows.get(k, []))
+
+
+def test_a_group_with_nothing_on_has_no_row():
+    groups = {'Sky Sports Main Event': 'UK | Sky Sports', 'Newcastle United': 'Match day'}
+    channels = [{'channelid': 8, 'label': 'Sky Sports Main Event', 'channelnumber': 1,
+                 'broadcastnow': {'title': 'Darts', 'endtime': '2026-11-07 16:00:00'}},
+                {'channelid': 9, 'label': 'Newcastle United', 'channelnumber': 50}]
+    titles = tvrows.rows(channels, entries(), [], NOW, groups=groups)[tvrows.TITLES]
+    assert list(titles.values()) == ['UK | Sky Sports']
+    channels[1]['broadcastnow'] = {'title': 'Next: Newcastle v Spurs at 20:00', 'endtime': '2026-11-07 20:00:00'}
+    titles = tvrows.rows(channels, entries(), [], NOW, groups=groups)[tvrows.TITLES]
+    assert list(titles.values()) == ['UK | Sky Sports', 'Match day']
 
 
 def test_the_group_titles_are_kept_for_the_layout(tmp_path):
@@ -295,6 +309,7 @@ def test_an_event_channels_lead_in_counts_down_to_its_start():
     card = tvrows.rows(channels, entries(), ['Newcastle United', 'Newcastle Utd'], NOW)[tvrows.RECENT_ROW][0]
     assert card['left'] == 'Starts in 35 min'
     assert card['percent'] == ''
+    assert card['hero.facts'] == card['card.title']  # no lead-in times
     assert tvrows.starts_in(NOW - datetime.timedelta(minutes=1), NOW) == ''
     assert tvrows.starts_in(NOW + datetime.timedelta(minutes=65), NOW) == 'Starts in 1 h 5 min'
 
