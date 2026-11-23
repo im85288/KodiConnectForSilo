@@ -133,13 +133,14 @@ def test_a_league_by_the_names_a_title_uses():
     assert tvrows.league_in('Test Cricket : England v India', [league]) is None
 
 
-def test_backdrop_team_then_picture_then_league():
+def test_backdrop_picture_then_team_then_league():
     known = [sportsdb.team_record(FULHAM)]
     leagues = [sportsdb.league_record(EPL)]
-    team = tvrows.backdrop({'art.fanart': 'pic'}, 'Premier League : Fulham v Brentford', known, leagues)
-    assert team['art.fanart'] == 'http://f/fulham.jpg'
-    picture = tvrows.backdrop({'art.fanart': 'pic'}, 'Premier League : Spurs v Wolves', known, leagues)
+    # The programme's own picture first, so the backdrop matches the card.
+    picture = tvrows.backdrop({'art.fanart': 'pic'}, 'Premier League : Fulham v Brentford', known, leagues)
     assert picture['art.fanart'] == 'pic'
+    team = tvrows.backdrop({'art.fanart': ''}, 'Premier League : Fulham v Brentford', known, leagues)
+    assert team['art.fanart'] == 'http://f/fulham.jpg'
     league = tvrows.backdrop({'art.fanart': ''}, 'Premier League : Spurs v Wolves', known, leagues)
     assert league['art.fanart'] == 'http://l/epl.jpg'
 

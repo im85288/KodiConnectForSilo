@@ -464,3 +464,11 @@ def test_cards_take_their_cached_pictures_tints():
     assert [c.get('tint') for c in cards['recent']] == ['FF33365D', None, 'FF000000']
     assert tvrows.picture_tints('/storage/list.m3u') == {}
 
+
+def test_a_guide_match_takes_the_same_sides_fixture_picture():
+    fixtures = [('England', {'title': '2nd T20: Australia v England', 'start': 1000, 'thumb': 'badges.jpg'}),
+                ('England', {'title': 'England v Wales', 'start': 900, 'thumb': 'other.jpg'})]
+    assert tvrows.fixture_thumb(fixtures, 'Australia v England', 500000, 3600) == 'badges.jpg'
+    assert tvrows.fixture_thumb(fixtures, 'Ashes: Australia v England', 1200, 3600) == 'badges.jpg'
+    assert tvrows.fixture_thumb(fixtures, 'India v England', 500000, 3600) == ''
+

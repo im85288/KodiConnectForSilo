@@ -344,12 +344,16 @@ def league_in(title, leagues):
 
 
 def backdrop(card, title, known=(), leagues=()):
-    """A card's backdrop, best first: a known team's fanart, else the
-    programme's own picture, else its league's fanart."""
+    """A card's backdrop, best first: the programme's own picture (what the
+    card shows, so the page's backdrop matches it), else a known team's
+    fanart, else its league's fanart. A team's fanart can be another sport's
+    (England's football team behind England's T20 cricket)."""
+    if card.get('art.fanart'):
+        return card
     team = team_in(title, known)
     if team:
         card.update(team_art(team, title))
-    elif not card.get('art.fanart'):
+    else:
         league = league_in(title, leagues)
         if league:
             import zlib
@@ -416,10 +420,33 @@ def match_card(match, channels, now, reminded=(), known=(), thumb='', leagues=()
     (backdrop()), and thumb (its fixture's picture) for a card without one."""
     card = guide_match_card(match, channels, now, reminded)
     if card:
+        if not card['art.landscape'] and thumb:  # the card's picture and the page's backdrop alike
+            card['art.landscape'] = card['art.fanart'] = thumb
         backdrop(card, match['title'], known, leagues)
-        if not card['art.landscape'] and thumb:
-            card['art.landscape'] = thumb
     return card
+
+
+SIDE_COMMON = {'league', 'premier', 'test', 'cup', 'final', 'match', 'live', 'international', 'series',
+               'women', 'men', 'highlights', 'day', 'round', 'football', 'cricket', 'rugby'}
+
+
+def sides(title):
+    """A fixture's distinctive words ("2nd T20: Australia v England" ->
+    {australia, england}), to find another meeting of the same sides."""
+    return {w for w in re.findall(r'[a-z]{4,}', (title or '').lower()) if w not in SIDE_COMMON}
+
+
+def fixture_thumb(fixtures, title, start, window):
+    """A fixture's picture for a guide match: the fixture at its time, else
+    the nearest with the same sides (TheSportsDB's are the two badges, right
+    for any meeting of them); '' when none."""
+    thumb = next((f.get('thumb') or '' for _, f in fixtures if abs(f['start'] - start) <= window and f.get('thumb')), '')
+    if thumb:
+        return thumb
+    words = sides(title)
+    same = [(abs(f['start'] - start), f['thumb']) for _, f in fixtures
+            if f.get('thumb') and len(words & sides(f.get('title'))) >= 2]
+    return min(same)[1] if same else ''
 
 
 def guide_match_card(match, channels, now, reminded=()):
@@ -624,7 +651,7 @@ def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=()
     team_cards = []
     for match in team_matches(entries, teams):
         start = match['start'].timestamp()
-        thumb = next((f.get('thumb') or '' for _, f in fixtures if abs(f['start'] - start) <= window), '')
+        thumb = fixture_thumb(fixtures, match['title'], start, window)
         card = match_card(match, channels, now, reminded, known, thumb, leagues)
         if card:
             team_cards.append((start, card))
