@@ -200,6 +200,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.29.1 (2026-11-23)
+- **Lead-ins count down:** a "Next: <event> at 18:25" programme (the playlist server's lead-in before an event) has
+  `left` "Starts in 47 min" (`tvrows.starts_in`), no `percent`, and no times in `hero.facts`.
+- **Group rows with nothing on are hidden:** a guide group none of whose channels has a programme now has no row
+  (Match day between its team's matches); the rows after it move up.
+
 ### v0.29.0 (2026-11-23)
 - **Restart what's on now** for Skyline's TV guide, as Sky Stream's: programmes on now on catch-up channels, 5 min
   in with 10 to go, recently watched channels first (`plugin.restart_choices`, filler left out), kept published by
