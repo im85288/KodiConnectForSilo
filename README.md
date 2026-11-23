@@ -200,6 +200,16 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.29.0 (2026-11-23)
+- **Restart what's on now** for Skyline's TV guide, as Sky Stream's: programmes on now on catch-up channels, 5 min
+  in with 10 to go, recently watched channels first (`plugin.restart_choices`, filler left out), kept published by
+  the service as `restart.N.*` (each minute and as the guide opens); OK plays one from its start (`play_catchup`).
+- **Left/Right in Live TV:** `silo.live.step` -1/1 (held -2/2); Skyline seeks 10 s (5 min) unless the banner is up,
+  when they step its programmes as before.
+- **The banner's next programmes:** `tv.nextN.*` for the channel Kodi's banner shows, `banner.nextN.*` for the
+  programme Left/Right stepped to (a channel's programmes kept 5 minutes).
+- **Removed:** the Start from the beginning note (`liveprompts` keeps Coming up next).
+
 ### v0.28.0 (2026-11-23)
 - **Coming up live** (`tvrows.upcoming`, row `upcoming` between the group rows and Catch up): live programmes
   starting within 12 h on any channel except news ones, one card an event across its channels (titles that differ
