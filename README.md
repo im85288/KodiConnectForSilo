@@ -200,6 +200,14 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.28.0 (2026-11-23)
+- **Coming up live** (`tvrows.upcoming`, row `upcoming` between the group rows and Catch up): live programmes
+  starting within 12 h on any channel except news ones, one card an event across its channels (titles that differ
+  only by a competition in front are one), soonest first; OK sets or removes a reminder.
+- **Remove from recent channels again:** the TV page's Recent channels cards carry `tv.recent`; the Home long press
+  offers the removal (`context.home_menu`), and the row leaves removed channels out until watched again. In Live TV,
+  long OK sets `silo.live.longok`: Skyline opens the OK screen's channel menu while it's open, else the guide.
+
 ### v0.27.1 (2026-11-23)
 - **Tidy-up:** the mini guide's plugin modes (`mini_grid`, `mini_shift`), grid helpers and tests are removed; Skyline
   0.19.2 drops the window that used them. Its cache (`mini_guide.json` in the add-on's profile) is no longer written.
