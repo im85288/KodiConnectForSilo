@@ -24,14 +24,18 @@ import xml.etree.ElementTree as ET
 
 from . import fileio, kodi
 
-TEAMS_ROW, RECENT_ROW, CATCHUP_ROW = 'teams', 'recent', 'catchup'
+TEAMS_ROW, RECENT_ROW, CATCHUP_ROW, UPCOMING_ROW = 'teams', 'recent', 'catchup', 'upcoming'
 # The guide's groups (the playlist's group-title), each a row of its channels,
 # in the playlist's order: their titles are the groups' names (group_titles).
 GROUP_ROWS = tuple('group%d' % n for n in range(1, 6))
 # Recent channels first, as Sky Stream's home; My teams last: it's often a
 # fixture days off (the user's order).
 ROWS = ((RECENT_ROW, 'Recent channels'),) + tuple((key, '') for key in GROUP_ROWS) + \
-    ((CATCHUP_ROW, 'Catch up'), (TEAMS_ROW, 'My teams'))
+    ((UPCOMING_ROW, 'Coming up live'), (CATCHUP_ROW, 'Catch up'), (TEAMS_ROW, 'My teams'))
+# Coming up live, as Sky Stream's "Live & upcoming": live events starting
+# within UPCOMING_AHEAD on any channel, soonest first, one card an event (its
+# channels together); OK sets or removes its reminder.
+UPCOMING_AHEAD = datetime.timedelta(hours=12)
 TITLES_FILE = 'tv_rows.json'
 # Catch up: live matches that ended within SPORT_BACK, and what the most recent
 # RECENT_CATCHUP channels showed within RECENT_BACK, on channels with catch-up.
@@ -514,6 +518,31 @@ def group_rows(channels, groups, now, pictures, known=(), leagues=()):
     return cards, titles
 
 
+def upcoming(entries, channels, now, reminded=(), known=(), leagues=()):
+    """Coming up live's cards: the live programmes starting after now and
+    within UPCOMING_AHEAD, the same event on several channels as one card
+    (by its title), soonest first."""
+    soon = [e for e in entries if now < e['start'] <= now + UPCOMING_AHEAD]
+    # One event's titles differ by a competition in front ("Premier League :
+    # Brentford v Everton", an event channel's "Premier League Brentford v
+    # Everton"): the same event if one's title ends the other's, near in time.
+    keys = {id(e): same_title(e) for e in soon}
+    for e in soon:
+        for other in soon:
+            shorter = keys[id(other)]
+            if shorter and len(shorter) < len(keys[id(e)]) and keys[id(e)].endswith(shorter) \
+                    and abs(other['start'] - e['start']) <= MATCH_WINDOW:
+                keys[id(e)] = shorter
+    cards = []
+    for match in group(soon, same=lambda e: keys[id(e)]):
+        card = match_card(match, channels, now, reminded, known, '', leagues)
+        if card:
+            cards.append(card)
+        if len(cards) >= CARDS:
+            break
+    return cards
+
+
 def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=(), fixtures=(),
          unknown='channel not known yet', leagues=(), groups=None, ended=()):
     """{row: [card]} for the TV page. known: TheSportsDB's teams (theirs and
@@ -543,6 +572,7 @@ def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=()
     out = {TEAMS_ROW: team_cards[:CARDS], RECENT_ROW: [channel_card(c, now, pictures.get(c.get('label'), ''), known,
                                                                     leagues) for c in recent[:CARDS]],
            CATCHUP_ROW: catchup(ended, channels, recent, now)}
+    out[UPCOMING_ROW] = upcoming(entries, channels, now, reminded, known, leagues)
     cards, titles = group_rows(channels, groups, now, pictures, known, leagues)
     out.update(cards)
     out[TITLES] = titles

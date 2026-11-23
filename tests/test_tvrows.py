@@ -384,3 +384,24 @@ def test_a_channels_logo_comes_from_the_channels_cache(monkeypatch):
     assert tvrows.channel_logo('Sky Sports Main Event', now=1000) == 'http://logo/main.png'
     assert tvrows.channel_logo('Sky News', now=1001) == ''
     assert calls == ['PVR.GetChannels']
+
+
+def test_coming_up_live_lists_events_starting_soon_once_each_soonest_first():
+    now = datetime.datetime(2026, 11, 23, 12, 0, tzinfo=datetime.timezone.utc)
+    hour = datetime.timedelta(hours=1)
+
+    def entry(name, title, start):
+        return {'name': name, 'title': title, 'desc': '', 'start': now + start * hour,
+                'stop': now + (start + 2) * hour, 'icon': ''}
+    entries = [entry('Sky Sports Premier League', 'Premier League : Brentford v Everton', 6),
+               entry('Sky Sports + 01: Premier League Brentford v Everton', 'Premier League Brentford v Everton', 6),
+               entry('TNT Sports 1', 'UEFA Champions League : Celtic v Napoli', 3),
+               entry('Sky Sports Main Event', 'Test Cricket : Day 1', -1),      # on now: not coming up
+               entry('TNT Sports 2', 'Premiership Rugby : Bath v Sale', 30)]   # too far off
+    channels = {name: {'channelid': n, 'icon': ''} for n, name in enumerate(
+        ['Sky Sports Premier League', 'Sky Sports + 01: Premier League Brentford v Everton', 'TNT Sports 1',
+         'Sky Sports Main Event', 'TNT Sports 2'], 1)}
+    cards = tvrows.upcoming(entries, channels, now, reminded={str(int((now + 3 * hour).timestamp())): {}})
+    assert [c['card.title'] for c in cards] == ['Celtic v Napoli', 'Brentford v Everton']
+    assert 'reminder set' in cards[0]['card.sub'] and '2 channels' in cards[1]['card.sub']
+    assert all('mode=tv_remind' in c['tv.play'] for c in cards)
