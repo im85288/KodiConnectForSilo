@@ -453,3 +453,14 @@ def test_uhd_channels_and_lengths():
     assert tvrows.playlist_uhd(text) == '|Sky Sports Main Event|'
     assert tvrows.playlist_uhd('#EXTM3U\n') == ''
     assert [tvrows.length(s) for s in (1800, 3600, 5400, 16200)] == ['30m', '1h', '1h 30m', '4h 30m']
+
+
+def test_cards_take_their_cached_pictures_tints():
+    uuid = 'a7f1b746-b4db-4ebc-8a26-7ee0826c026e'
+    cards = {'recent': [{'art.landscape': 'http://192.168.1.49:8097/img/%s.jpg' % uuid}, {'art.landscape': 'logo.png'},
+                        {'art.landscape': 'http://h/img/%s.jpg' % uuid, 'tint': 'FF000000'}],
+             tvrows.TITLES: {'group1': 'Sky Sports'}}
+    tvrows.add_tints(cards, {uuid: 'FF33365D'})
+    assert [c.get('tint') for c in cards['recent']] == ['FF33365D', None, 'FF000000']
+    assert tvrows.picture_tints('/storage/list.m3u') == {}
+

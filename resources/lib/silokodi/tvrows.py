@@ -106,6 +106,35 @@ def playlist_names(text):
     return names
 
 
+PICTURE_ID = re.compile(r'/img/([0-9a-f-]{36})\.jpg')
+
+
+def picture_tints(playlist):
+    """The playlist server's page tints for its cached pictures ({programme id:
+    ARGB}, its /tints.json), as Home's backdrops take a title's colour; {} for
+    another playlist or when the server has none."""
+    from urllib.parse import urlsplit
+    if not (playlist or '').startswith(('http://', 'https://')):
+        return {}
+    parts = urlsplit(playlist)
+    try:
+        import json
+        found = json.loads(read('%s://%s/tints.json' % (parts.scheme, parts.netloc), timeout=5))
+    except Exception:
+        return {}
+    return found if isinstance(found, dict) else {}
+
+
+def add_tints(cards, tints):
+    """Each card with a cached picture takes that picture's tint (the TV
+    page's backdrop colour, as Home's)."""
+    for row in cards.values():
+        for card in row if isinstance(row, list) else ():
+            found = PICTURE_ID.search(card.get('art.landscape') or card.get('art.fanart') or '')
+            if found and tints.get(found.group(1)) and not card.get('tint'):
+                card['tint'] = tints[found.group(1)]
+
+
 def playlist_uhd(text):
     """The channels an M3U playlist plays in UHD (the playlist server marks
     them realtime="false", as Kodi passes their audio through), as
@@ -699,8 +728,10 @@ def gather(teams, reminded=(), now=None):
         entries = programmes(read(guide), names, now, pictures, ended)
     known, fixtures, leagues = sports(teams, now, os.path.join(kodi.profile_dir(), 'sportsdb.json'))
     from . import channels
-    return rows(channel_list, entries, teams, now, reminded, pictures, known, fixtures, kodi.string(30228), leagues,
-                groups, ended, channels.load_removed())
+    cards = rows(channel_list, entries, teams, now, reminded, pictures, known, fixtures, kodi.string(30228), leagues,
+                 groups, ended, channels.load_removed())
+    add_tints(cards, picture_tints(playlist))
+    return cards
 
 
 def fill_reminders(cards, path=None):
