@@ -472,3 +472,12 @@ def test_a_guide_match_takes_the_same_sides_fixture_picture():
     assert tvrows.fixture_thumb(fixtures, 'Ashes: Australia v England', 1200, 3600) == 'badges.jpg'
     assert tvrows.fixture_thumb(fixtures, 'India v England', 500000, 3600) == ''
 
+
+def test_a_card_without_a_picture_borrows_its_sides_picture():
+    cards = [{'card.title': '2nd T20: Australia v England', 'art.landscape': 'sky.jpg', 'art.fanart': 'sky.jpg'},
+             {'card.title': 'Australia v England', 'art.landscape': '', 'art.fanart': 'football.jpg'},
+             {'card.title': 'England v Wales', 'art.landscape': '', 'art.fanart': ''}]
+    tvrows.share_pictures(cards)
+    assert [(c['art.landscape'], c['art.fanart']) for c in cards] == [
+        ('sky.jpg', 'sky.jpg'), ('sky.jpg', 'sky.jpg'), ('', '')]
+

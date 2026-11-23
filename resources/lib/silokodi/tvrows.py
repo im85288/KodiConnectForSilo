@@ -436,6 +436,21 @@ def sides(title):
     return {w for w in re.findall(r'[a-z]{4,}', (title or '').lower()) if w not in SIDE_COMMON}
 
 
+def share_pictures(cards):
+    """A card without a picture takes the picture of another card of the
+    same sides (2nd T20: Australia v England's for Australia v England), as
+    its card and backdrop."""
+    pictured = [(sides(c.get('card.title')), c['art.landscape']) for c in cards if c.get('art.landscape')]
+    for card in cards:
+        if card.get('art.landscape'):
+            continue
+        words = sides(card.get('card.title'))
+        picture = next((p for found, p in pictured if len(words & found) >= 2), '')
+        if picture:
+            card['art.landscape'] = card['art.fanart'] = picture
+    return cards
+
+
 def fixture_thumb(fixtures, title, start, window):
     """A fixture's picture for a guide match: the fixture at its time, else
     the nearest with the same sides (TheSportsDB's are the two badges, right
@@ -662,7 +677,7 @@ def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=()
             continue
         seen.add(fixture['title'])
         team_cards.append((fixture['start'], fixture_card(fixture, team, now, reminded, unknown)))
-    team_cards = [card for _, card in sorted(team_cards, key=lambda pair: pair[0])]
+    team_cards = share_pictures([card for _, card in sorted(team_cards, key=lambda pair: pair[0])])
     # Removed from Recent channels (long press: plugin's forget_channel) until watched again.
     removed = removed or {}
     def kept(channel):  # Kodi's own time can be a date string (no database read): then never removed
