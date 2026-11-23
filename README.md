@@ -200,6 +200,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.29.2 (2026-11-23)
+- **UHD channels for Skyline's guide badge:** `tv.uhd` is `|name|name|` of the playlist's channels marked
+  `realtime="false"` (the playlist server's UHD ones; `tvrows.playlist_uhd`), published as the TV page gathers.
+- **Restart row lengths and quality:** `restart.N.length` ("1h 30m", `tvrows.length`) and `restart.N.quality`
+  (HD/UHD).
+
 ### v0.29.1 (2026-11-23)
 - **Lead-ins count down:** a "Next: <event> at 18:25" programme (the playlist server's lead-in before an event) has
   `left` "Starts in 47 min" (`tvrows.starts_in`), no `percent`, and no times in `hero.facts`.
