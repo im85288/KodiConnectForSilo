@@ -481,3 +481,9 @@ def test_a_card_without_a_picture_borrows_its_sides_picture():
     assert [(c['art.landscape'], c['art.fanart']) for c in cards] == [
         ('sky.jpg', 'sky.jpg'), ('sky.jpg', 'sky.jpg'), ('', '')]
 
+
+def test_groups_marked_off_the_tv_page_have_no_row():
+    text = ('#EXTM3U\n#EXTINF:-1 tvg-id="a" group-title="Sky Sports",Sky Sports Main Event\nhttp://x\n'
+            '#EXTINF:-1 tvpage="no" tvg-id="b" group-title="Peacock",Peacock 03\nhttp://y\n')
+    assert tvrows.playlist_groups(text) == {'Sky Sports Main Event': 'Sky Sports'}
+

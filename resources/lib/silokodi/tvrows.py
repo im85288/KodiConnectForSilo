@@ -155,10 +155,12 @@ def length(seconds):
 
 
 def playlist_groups(text):
-    """{channel name: its group} from an M3U playlist (group-title)."""
+    """{channel name: its group} from an M3U playlist (group-title); a channel
+    the playlist server marks tvpage="no" (its IPTV_TV_PAGE_SKIP groups: in the
+    guide, not on the TV page) is left out, so its group has no row."""
     groups = {}
     for line in text.splitlines():
-        if line.startswith('#EXTINF'):
+        if line.startswith('#EXTINF') and 'tvpage="no"' not in line:
             match = re.search(r'group-title="([^"]*)"', line)
             name = line.rpartition(',')[2].strip()
             if match and match.group(1) and name:
