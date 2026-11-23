@@ -45,6 +45,6 @@
 
 0.27.1: tidy-up: the mini guide's leftover code is gone (Skyline 0.19.2 drops its window).
 
-0.26.1: Start from the beginning is offered once when a channel starts playing, not again on coming back from the TV guide; Back dismisses it (Skyline 0.18.1).</news>
+0.27.0: the TV guide (Skyline 0.19.0, Sky Stream's look) shows the focused programme's channel logo at its top.</news>
   </extension>
 </addon>
