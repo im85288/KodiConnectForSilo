@@ -13,8 +13,12 @@ import time
 from . import channels, kodi, tvrows
 
 WINDOW = 1183  # Skyline's banner window
+NEXT = 2  # the programmes after it, alongside, as Sky Stream's banner
+NEXT_KEYS = tuple('next%d.%s' % (n, key) for n in range(1, NEXT + 1) for key in ('title', 'time', 'picture'))
 KEYS = ('title', 'times', 'plot', 'picture', 'live', 'when', 'archive', 'broadcastid', 'channelid', 'start',
-        'offset', 'channel', 'number', 'logo', 'hint')
+        'offset', 'channel', 'number', 'logo', 'hint') + NEXT_KEYS
+BROADCASTS_KEEP = 300  # seconds a channel's programmes are kept for the banner
+_broadcasts = {}       # channel id: (when read, its programmes)
 
 
 def props():
@@ -38,6 +42,46 @@ def shown_channel(name):
     answer = kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv',
                           properties=['hasarchive', 'icon', 'channelnumber']) or {}
     return next((c for c in answer.get('channels') or [] if c.get('label') == name), None)
+
+
+def broadcasts(channel, now=None):
+    """The channel's programmes (channels.channel_broadcasts), kept BROADCASTS_KEEP."""
+    now = now or time.time()
+    kept = _broadcasts.get(channel['channelid'])
+    if kept and now - kept[0] < BROADCASTS_KEEP:
+        return kept[1]
+    found = channels.channel_broadcasts(channel)
+    _broadcasts[channel['channelid']] = (now, found)
+    return found
+
+
+def following(shows, after, count=NEXT):
+    """The count programmes starting after after (epoch seconds), in order."""
+    return sorted((b for b in shows if b.get('start') and b['start'] > after), key=lambda b: b['start'])[:count]
+
+
+def publish_next(prefix, shows, after):
+    """prefix + nextN.title/time/picture for the programmes after after."""
+    found = following(shows, after)
+    for n in range(1, NEXT + 1):
+        show = found[n - 1] if len(found) >= n else {}
+        kodi.set_property('%snext%d.title' % (prefix, n), tvrows.without_marks(show.get('title') or ''))
+        kodi.set_property('%snext%d.time' % (prefix, n),
+                          time.strftime('%H:%M', time.localtime(show['start'])) if show else '')
+        kodi.set_property('%snext%d.picture' % (prefix, n), show.get('thumbnail') or '')
+
+
+def publish_playing_next(name, now=None):
+    """The banner's next programmes for the channel Kodi's banner shows (tv.nextN.*):
+    those after the one on now. The service's, as the channel or programme changes."""
+    channel = shown_channel(name) if name else None
+    if not channel:
+        publish_next('tv.', [], 0)
+        return
+    now = now or time.time()
+    shows = broadcasts(channel, now)
+    on = next((b for b in shows if b.get('start') and b.get('end') and b['start'] <= now < b['end']), None)
+    publish_next('tv.', shows, on['start'] if on else now)
 
 
 def at(epoch, today):
@@ -78,7 +122,8 @@ def step(direction, now=None):
     now = now or time.time()
     before = props()
     offset = int(before['offset'] or 0) if before['channel'] == channel.get('label') else 0
-    show, offset = programme(channels.channel_broadcasts(channel), now, offset + direction)
+    shows = broadcasts(channel, now)
+    show, offset = programme(shows, now, offset + direction)
     kodi.log('Banner: step %+d on %s: %s' % (direction, channel.get('label'),
                                              '%s (%+d)' % (show.get('title'), offset) if show else 'nothing'))
     if show is None:
@@ -97,6 +142,7 @@ def step(direction, now=None):
               'logo': channel.get('icon') or '', 'hint': hint(when, archive, reminded)}
     for key, value in values.items():
         kodi.set_property('banner.' + key, value)
+    publish_next('banner.', shows, show['start'])
 
 
 def play():

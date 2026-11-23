@@ -1399,6 +1399,12 @@ class Service(object):
                 kodi.log_warning('TV banner: %s' % error)
                 picture, live = '', False
             kodi.set_property('tv.banner_picture', picture)
+            # Sky Stream's banner: the next programmes alongside (banner.py).
+            try:
+                from . import banner as banner_window
+                banner_window.publish_playing_next(channel)
+            except Exception as error:  # the banner shows none
+                kodi.log_warning('TV banner: next: %s' % error)
             kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
         self.tick_live_prompts(channel)
