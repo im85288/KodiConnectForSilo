@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.29.2" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.30.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.29.2: for Skyline 0.21.1's TV guide: the channels the playlist plays in UHD, for its HD/UHD badge; the Restart what's on now row's lengths as 1h 30m.
+    <news>0.30.0: TV page (Skyline 0.22.0): the backdrop takes the focused card's picture's colour, as Home; a card's backdrop is its own picture (not a team's photo of another sport); matches without a picture take one of the same sides; the playlist server's hidden groups (Peacock, Sky Sports+) have no row.
+
+0.29.2: for Skyline 0.21.1's TV guide: the channels the playlist plays in UHD, for its HD/UHD badge; the Restart what's on now row's lengths as 1h 30m.
 
 0.29.1: TV page: an event channel's lead-in card says Starts in 47 min, with no progress bar, not the time left; a group row with nothing on (Match day between Newcastle's matches) is hidden.
 
@@ -43,8 +45,6 @@
 
 0.28.0: TV page (Skyline 0.20.0): a Coming up live row of live events starting in the next 12 hours (not news), soonest first; OK sets a reminder. A long press on a recent channel removes it again, on the TV page and on the OK screen while a channel plays.
 
-0.27.1: tidy-up: the mini guide's leftover code is gone (Skyline 0.19.2 drops its window).
-
-0.27.0: the TV guide (Skyline 0.19.0, Sky Stream's look) shows the focused programme's channel logo at its top.</news>
+0.27.1: tidy-up: the mini guide's leftover code is gone (Skyline 0.19.2 drops its window).</news>
   </extension>
 </addon>

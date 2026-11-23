@@ -200,6 +200,15 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.30.0 (2026-11-23)
+- **TV page tint:** each card with a picture from the playlist server's cache takes that picture's tint from its
+  `/tints.json` (`tvrows.picture_tints`, `add_tints`), so Skyline's backdrop wash follows it as on Home.
+- **Backdrops:** a card's own picture comes first (`tvrows.backdrop`), then a known team's fanart, then its league's.
+- **Match pictures:** a guide match without one takes TheSportsDB's picture of a fixture between the same sides
+  (`fixture_thumb`), else another My teams card's of the same sides (`share_pictures`).
+- **Hidden groups:** channels the playlist marks `tvpage="no"` (the server's `IPTV_TV_PAGE_SKIP`) give their group
+  no TV page row (`playlist_groups`).
+
 ### v0.29.2 (2026-11-23)
 - **UHD channels for Skyline's guide badge:** `tv.uhd` is `|name|name|` of the playlist's channels marked
   `realtime="false"` (the playlist server's UHD ones; `tvrows.playlist_uhd`), published as the TV page gathers.
