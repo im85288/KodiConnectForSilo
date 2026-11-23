@@ -200,6 +200,10 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.27.1 (2026-11-23)
+- **Tidy-up:** the mini guide's plugin modes (`mini_grid`, `mini_shift`), grid helpers and tests are removed; Skyline
+  0.19.2 drops the window that used them. Its cache (`mini_guide.json` in the add-on's profile) is no longer written.
+
 ### v0.27.0 (2026-11-22)
 - **TV guide logo:** Skyline's Sky Stream guide shows the focused programme's channel logo at its top; Kodi 21 has no
   logo label for guide programmes (their `ListItem.Icon` is the picture), so a thread looks at the guide's focused
