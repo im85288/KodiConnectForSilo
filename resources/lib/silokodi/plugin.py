@@ -5,6 +5,7 @@ The plugin runs in a short-lived process per call. Everything that needs the
 Silo session goes through the service's loopback relay.
 """
 import json
+import re
 import time
 
 try:
@@ -424,6 +425,7 @@ def schedule_days(handle, number, name):
 RESTART_AFTER = 5 * 60   # a programme this far in is worth restarting
 RESTART_LEFT = 10 * 60   # not when this little is left
 RESTART_CARDS = 12
+FILLER = re.compile(r'^This is |off ?air|no event', re.I)  # a part-time channel between events
 
 
 def restart_choices(found, watched, now):
@@ -435,7 +437,8 @@ def restart_choices(found, watched, now):
     out = []
     for channel in found:
         on = channel.get('broadcastnow') or {}
-        if channel.get('hidden') or not channel.get('hasarchive') or not on.get('starttime') or not on.get('endtime'):
+        if channel.get('hidden') or not channel.get('hasarchive') or not on.get('starttime') or not on.get('endtime') \
+                or FILLER.search(on.get('title') or ''):
             continue
         start, end = utc_seconds(on['starttime']), utc_seconds(on['endtime'])
         if now - start >= RESTART_AFTER and end - now >= RESTART_LEFT:
