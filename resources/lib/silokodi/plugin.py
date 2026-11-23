@@ -447,7 +447,7 @@ def restart_choices(found, watched, now):
     return out[:RESTART_CARDS]
 
 
-RESTART_FIELDS = ('title', 'started', 'thumb', 'logo', 'plot', 'minutes', 'live', 'channelid', 'start')
+RESTART_FIELDS = ('title', 'started', 'thumb', 'logo', 'plot', 'minutes', 'length', 'quality', 'live', 'channelid', 'start')
 
 
 def restart_cards(now=None):
@@ -456,6 +456,7 @@ def restart_cards(now=None):
     once, where a plugin listing took about 5 s to arrive."""
     from . import tvrows
     now = now or time.time()
+    uhd = kodi.get_property('tv.uhd')  # tvrows.playlist_uhd's "|name|name|"
     cards = []
     for channel, on, start, end in restart_choices(tv_channels(CHANNEL_FIELDS + ['hasarchive']),
                                                    channels.last_watched(), now):
@@ -463,6 +464,8 @@ def restart_cards(now=None):
                       'started': 'Started at %s' % time.strftime('%H:%M', time.localtime(start)),
                       'thumb': on.get('thumbnail') or '', 'logo': channel.get('icon') or '',
                       'plot': on.get('plot') or '', 'minutes': str(int((end - start) // 60)),
+                      'length': tvrows.length(end - start),
+                      'quality': 'UHD' if '|%s|' % (channel.get('label') or '') in uhd else 'HD',
                       'live': '1' if channels.is_live(on.get('genre')) else '',
                       'channelid': str(channel['channelid']), 'start': str(int(start))})
     return cards
@@ -483,7 +486,7 @@ def restart_now(base, handle):
         item.setProperties({'silo.channelid': str(channel['channelid']), 'silo.start': str(int(start)),
                             'silo.channel': channel.get('label') or '', 'silo.logo': channel.get('icon') or '',
                             'silo.started': 'Started at %s' % started, 'silo.plot': on.get('plot') or '',
-                            'silo.minutes': str(int((end - start) // 60)),
+                            'silo.minutes': str(int((end - start) // 60)), 'silo.length': tvrows.length(end - start),
                             'silo.live': '1' if channels.is_live(on.get('genre')) else ''})
         xbmcplugin.addDirectoryItem(handle, '%s?mode=play_catchup&channel=%d&start=%d'
                                     % (base, channel['channelid'], start), item, isFolder=False)

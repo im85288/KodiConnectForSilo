@@ -106,6 +106,25 @@ def playlist_names(text):
     return names
 
 
+def playlist_uhd(text):
+    """The channels an M3U playlist plays in UHD (the playlist server marks
+    them realtime="false", as Kodi passes their audio through), as
+    "|Sky Sports Main Event|Sky Sports F1|": Skyline's guide shows UHD for
+    them, else HD (String.Contains with the channel's name)."""
+    names = [line.rpartition(',')[2].strip() for line in text.splitlines()
+             if line.startswith('#EXTINF') and 'realtime="false"' in line]
+    return '|%s|' % '|'.join(n for n in names if n) if any(names) else ''
+
+
+def length(seconds):
+    """A programme's length, as Sky's: '30m', '2h', '1h 30m'."""
+    minutes = max(0, int(round(seconds / 60.0)))
+    hours, rest = divmod(minutes, 60)
+    if not hours:
+        return '%dm' % rest
+    return '%dh %dm' % (hours, rest) if rest else '%dh' % hours
+
+
 def playlist_groups(text):
     """{channel name: its group} from an M3U playlist (group-title)."""
     groups = {}
@@ -676,6 +695,7 @@ def gather(teams, reminded=(), now=None):
     if playlist and guide:
         text = read(playlist).decode('utf-8', 'replace')
         names, groups = playlist_names(text), playlist_groups(text)
+        kodi.set_property('tv.uhd', playlist_uhd(text))
         entries = programmes(read(guide), names, now, pictures, ended)
     known, fixtures, leagues = sports(teams, now, os.path.join(kodi.profile_dir(), 'sportsdb.json'))
     from . import channels

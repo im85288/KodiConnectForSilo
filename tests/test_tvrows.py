@@ -445,3 +445,11 @@ def test_a_channel_removed_from_recent_stays_out_until_watched_again():
     channel_list[0]['lastplayed'] = 3000  # watched again since
     recent = tvrows.rows(channel_list, [], [], now, removed={'6': 1000})[tvrows.RECENT_ROW]
     assert [c['card.title'] for c in recent] == ['Sky Sports F1', 'Sky News']
+
+
+def test_uhd_channels_and_lengths():
+    text = ('#EXTM3U\n#EXTINF:-1 realtime="false" tvg-id="a" group-title="S",Sky Sports Main Event\nhttp://x\n'
+            '#EXTINF:-1 tvg-id="b" group-title="S",Sky Sports Golf\nhttp://y\n')
+    assert tvrows.playlist_uhd(text) == '|Sky Sports Main Event|'
+    assert tvrows.playlist_uhd('#EXTM3U\n') == ''
+    assert [tvrows.length(s) for s in (1800, 3600, 5400, 16200)] == ['30m', '1h', '1h 30m', '4h 30m']
