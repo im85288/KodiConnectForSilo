@@ -18,6 +18,13 @@ def home_menu():
     """Home's context menu key. A card of Home's published rows is the
     skin's, not a library item, so Kodi has no menu for it: a library
     title's gets Silo's card menu; anything else Kodi's."""
+    recent = xbmc.getInfoLabel('ListItem.Property(home.tv.recent)')
+    if recent.isdigit():  # the TV page's Recent channels: leave one out, as the OK screen's row can
+        if xbmcgui.Dialog().contextmenu([kodi.string(30168)]) == 0:
+            from .plugin import forget_channel
+            forget_channel(recent)
+            kodi.set_property('tv.refresh', '1')  # the service rebuilds the TV page's rows
+        return
     kind = xbmc.getInfoLabel('ListItem.Property(home.type)')
     dbid = xbmc.getInfoLabel('ListItem.Property(home.dbid)')
     if kind not in ('movie', 'tvshow', 'episode') or not dbid.isdigit():

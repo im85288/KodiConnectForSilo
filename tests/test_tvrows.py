@@ -401,7 +401,21 @@ def test_coming_up_live_lists_events_starting_soon_once_each_soonest_first():
     channels = {name: {'channelid': n, 'icon': ''} for n, name in enumerate(
         ['Sky Sports Premier League', 'Sky Sports + 01: Premier League Brentford v Everton', 'TNT Sports 1',
          'Sky Sports Main Event', 'TNT Sports 2'], 1)}
-    cards = tvrows.upcoming(entries, channels, now, reminded={str(int((now + 3 * hour).timestamp())): {}})
+    entries.append(entry('Sky News', 'Lunchtime', 1))  # a news channel: left out
+    channels['Sky News'] = {'channelid': 41, 'icon': ''}
+    cards = tvrows.upcoming(entries, channels, now, reminded={str(int((now + 3 * hour).timestamp())): {}},
+                            groups={'Sky News': 'News'})
     assert [c['card.title'] for c in cards] == ['Celtic v Napoli', 'Brentford v Everton']
     assert 'reminder set' in cards[0]['card.sub'] and '2 channels' in cards[1]['card.sub']
     assert all('mode=tv_remind' in c['tv.play'] for c in cards)
+
+
+def test_a_channel_removed_from_recent_stays_out_until_watched_again():
+    now = datetime.datetime(2026, 11, 23, 12, 0, tzinfo=datetime.timezone.utc)
+    channel_list = [{'label': 'Sky Sports F1', 'channelid': 6, 'lastplayed': 1000, 'icon': ''},
+                    {'label': 'Sky News', 'channelid': 41, 'lastplayed': 2000, 'icon': ''}]
+    recent = tvrows.rows(channel_list, [], [], now, removed={'6': 1000})[tvrows.RECENT_ROW]
+    assert [c['card.title'] for c in recent] == ['Sky News'] and recent[0]['tv.recent'] == '41'
+    channel_list[0]['lastplayed'] = 3000  # watched again since
+    recent = tvrows.rows(channel_list, [], [], now, removed={'6': 1000})[tvrows.RECENT_ROW]
+    assert [c['card.title'] for c in recent] == ['Sky Sports F1', 'Sky News']

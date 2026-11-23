@@ -518,11 +518,14 @@ def group_rows(channels, groups, now, pictures, known=(), leagues=()):
     return cards, titles
 
 
-def upcoming(entries, channels, now, reminded=(), known=(), leagues=()):
+def upcoming(entries, channels, now, reminded=(), known=(), leagues=(), groups=None):
     """Coming up live's cards: the live programmes starting after now and
     within UPCOMING_AHEAD, the same event on several channels as one card
     (by its title), soonest first."""
-    soon = [e for e in entries if now < e['start'] <= now + UPCOMING_AHEAD]
+    # News channels' programmes are all live ("Lunchtime"): not events to look out for.
+    groups = groups or {}
+    soon = [e for e in entries if now < e['start'] <= now + UPCOMING_AHEAD
+            and 'news' not in (groups.get(e['name']) or '').lower()]
     # One event's titles differ by a competition in front ("Premier League :
     # Brentford v Everton", an event channel's "Premier League Brentford v
     # Everton"): the same event if one's title ends the other's, near in time.
@@ -544,7 +547,7 @@ def upcoming(entries, channels, now, reminded=(), known=(), leagues=()):
 
 
 def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=(), fixtures=(),
-         unknown='channel not known yet', leagues=(), groups=None, ended=()):
+         unknown='channel not known yet', leagues=(), groups=None, ended=(), removed=None):
     """{row: [card]} for the TV page. known: TheSportsDB's teams (theirs and
     the viewer's); fixtures: [(team, fixture)], the viewer's teams' next ones,
     a card each until the guide lists them. groups: {channel name: its
@@ -567,12 +570,18 @@ def rows(channel_list, entries, teams, now, reminded=(), pictures=None, known=()
         seen.add(fixture['title'])
         team_cards.append((fixture['start'], fixture_card(fixture, team, now, reminded, unknown)))
     team_cards = [card for _, card in sorted(team_cards, key=lambda pair: pair[0])]
-    recent = sorted((c for c in channels.values() if c.get('lastplayed')), key=lambda c: c['lastplayed'],
-                    reverse=True)
-    out = {TEAMS_ROW: team_cards[:CARDS], RECENT_ROW: [channel_card(c, now, pictures.get(c.get('label'), ''), known,
-                                                                    leagues) for c in recent[:CARDS]],
+    # Removed from Recent channels (long press: plugin's forget_channel) until watched again.
+    removed = removed or {}
+    def kept(channel):  # Kodi's own time can be a date string (no database read): then never removed
+        when, gone = channel.get('lastplayed'), removed.get(str(channel.get('channelid')))
+        return not (isinstance(when, (int, float)) and isinstance(gone, (int, float)) and when <= gone)
+    recent = sorted((c for c in channels.values() if c.get('lastplayed') and kept(c)),
+                    key=lambda c: c['lastplayed'], reverse=True)
+    out = {TEAMS_ROW: team_cards[:CARDS], RECENT_ROW: [dict(channel_card(c, now, pictures.get(c.get('label'), ''), known,
+                                                                         leagues), **{'tv.recent': str(c.get('channelid'))})
+                                                      for c in recent[:CARDS]],
            CATCHUP_ROW: catchup(ended, channels, recent, now)}
-    out[UPCOMING_ROW] = upcoming(entries, channels, now, reminded, known, leagues)
+    out[UPCOMING_ROW] = upcoming(entries, channels, now, reminded, known, leagues, groups)
     cards, titles = group_rows(channels, groups, now, pictures, known, leagues)
     out.update(cards)
     out[TITLES] = titles
@@ -651,8 +660,9 @@ def gather(teams, reminded=(), now=None):
         names, groups = playlist_names(text), playlist_groups(text)
         entries = programmes(read(guide), names, now, pictures, ended)
     known, fixtures, leagues = sports(teams, now, os.path.join(kodi.profile_dir(), 'sportsdb.json'))
+    from . import channels
     return rows(channel_list, entries, teams, now, reminded, pictures, known, fixtures, kodi.string(30228), leagues,
-                groups, ended)
+                groups, ended, channels.load_removed())
 
 
 def fill_reminders(cards, path=None):

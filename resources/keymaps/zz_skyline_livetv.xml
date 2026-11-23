@@ -3,7 +3,9 @@
      load after other keymaps, which it overrides only for these keys):
        OK         the recently watched channels (Skyline's window 1196)
        Long OK    the TV guide (Sky has it and the banner, which Left/Right/Up/Down
-                  drive; the mini guide grid is gone)
+                  drive); on the OK screen, its channel's menu (Remove from recent
+                  channels). It sets silo.live.longok; Skyline's timer decides, as
+                  this section also catches the key in the OK screen
        Up / Down  the channel above or below, as in the guide (lower and higher
                   numbers). Kodi's Down / Up actions: with Kodi's "Confirm channel
                   switch" on (its default) they browse channels in the banner and OK
@@ -18,8 +20,8 @@
     <keyboard>
       <return>ActivateWindow(1196)</return>
       <enter>ActivateWindow(1196)</enter>
-      <return mod="longpress">ActivateWindow(TVGuide)</return>
-      <enter mod="longpress">ActivateWindow(TVGuide)</enter>
+      <return mod="longpress">SetProperty(silo.live.longok,1,home)</return>
+      <enter mod="longpress">SetProperty(silo.live.longok,1,home)</enter>
       <up>Down</up>
       <down>Up</down>
       <left>SetProperty(silo.live.step,-1,home)</left>
@@ -27,7 +29,7 @@
     </keyboard>
     <remote>
       <select>ActivateWindow(1196)</select>
-      <select mod="longpress">ActivateWindow(TVGuide)</select>
+      <select mod="longpress">SetProperty(silo.live.longok,1,home)</select>
       <up>Down</up>
       <down>Up</down>
       <left>SetProperty(silo.live.step,-1,home)</left>
