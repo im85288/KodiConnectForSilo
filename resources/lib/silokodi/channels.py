@@ -188,28 +188,6 @@ def around_now(rows, before=2):
     return ([rows[header]] + picked) if header is not None and header < start else picked
 
 
-SLOT = 30 * 60  # a column of Skyline's mini guide grid
-
-
-def grid_slots(rows, starts, now):
-    """A channel's programmes for Skyline's mini guide grid (long OK in Live
-    TV), one per column starting at each of starts (epoch seconds): the one
-    on at the column's start (in the column holding now, the one on now),
-    else the first to start within it, else None. Each found is the schedule
-    row with 'cont' when it carries on from the column before."""
-    shows = [row for row in rows if not row.get('header')]
-    found, before = [], None
-    for start in starts:
-        moment = now if start <= now < start + SLOT else start
-        row = next((r for r in shows if r['start'] <= moment < r['end']), None) or \
-            next((r for r in shows if start <= r['start'] < start + SLOT), None)
-        if row:
-            row = dict(row, cont=before is not None and before.get('broadcastid') == row.get('broadcastid'))
-        found.append(row)
-        before = row
-    return found
-
-
 def find_channel(number, name, found=None):
     """A Live TV channel by the skin's number, else its name (with catch-up).
     found: Kodi's channel list, if already read."""

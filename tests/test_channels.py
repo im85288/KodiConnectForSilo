@@ -109,16 +109,3 @@ def test_a_preview_isnt_watching(tmp_path, monkeypatch):
     assert channels.without_previews({7: 900}, {'7': {'at': 1100, 'before': 500}}) == {7: 900}
     channels.note_watched(7)  # full screen
     assert channels.without_previews({7: 1100, 8: 1001}, channels.load_previews()) == {7: 1100}
-
-
-def test_the_mini_guide_grid_shows_what_is_on_in_each_half_hour():
-    rows, day = _schedule()
-    half = channels.SLOT
-    # Columns from 18:00: Desk, then Football from 19:00 carrying on, and the column holding
-    # now (20:00) shows the one on now.
-    found = channels.grid_slots(rows, [day(28, 18) + n * half for n in range(5)], now=day(28, 20) + 600)
-    assert [(r['title'], r['cont']) for r in found] == [
-        ('Desk', False), ('Desk', True), ('Football', False), ('Football', True), ('Football', True)]
-    # Past a programme's end, a column's first programme to start in it; none: None.
-    assert channels.grid_slots(rows, [day(28, 23), day(29, 9)], now=day(28, 20)) == [None, dict(
-        next(r for r in rows if r.get('title') == 'Tomorrow'), cont=False)]
