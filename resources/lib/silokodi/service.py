@@ -487,6 +487,11 @@ class Service(object):
         if ticks % 60 == 0:
             self.remind_tv()
         self.publish_tv_title()  # the banner's picture as channels are browsed: each second
+        # The guide's restart row: each minute, and as the guide opens.
+        guide_open = xbmc.getCondVisibility('Window.IsActive(tvguide)')
+        if ticks % 60 == 7 or (guide_open and not getattr(self, 'guide_was_open', False)):
+            self.publish_restart_cards()
+        self.guide_was_open = guide_open
         if ticks % 2 == 0:
             self.note_tv_watched()
         try:
@@ -1437,6 +1442,22 @@ class Service(object):
             logo = ''
         kodi.set_property('guide.logo', logo)
         kodi.set_property('guide.logo_for', name)
+
+    def publish_restart_cards(self):
+        """Skyline's guide's Restart what's on now (plugin.restart_cards) as
+        silokodi.restart.N.*, only what changed."""
+        from . import plugin
+        try:
+            cards = plugin.restart_cards()
+        except Exception as error:  # the row stays as it was
+            kodi.log_warning('Restart row: %s' % error)
+            return
+        for n in range(1, plugin.RESTART_CARDS + 1):
+            card = cards[n - 1] if len(cards) >= n else {}
+            for field in plugin.RESTART_FIELDS:
+                key, value = 'restart.%d.%s' % (n, field), card.get(field, '')
+                if kodi.get_property(key) != value:
+                    kodi.set_property(key, value)
 
     def tick_live_prompts(self, channel):
         """Sky's notes over full-screen Live TV (liveprompts.py)."""

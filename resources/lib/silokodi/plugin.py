@@ -447,6 +447,27 @@ def restart_choices(found, watched, now):
     return out[:RESTART_CARDS]
 
 
+RESTART_FIELDS = ('title', 'started', 'thumb', 'logo', 'plot', 'minutes', 'live', 'channelid', 'start')
+
+
+def restart_cards(now=None):
+    """The restart row's cards as {field: text} (RESTART_FIELDS), for the
+    service to publish (silokodi.restart.N.*): Skyline's guide draws them at
+    once, where a plugin listing took about 5 s to arrive."""
+    from . import tvrows
+    now = now or time.time()
+    cards = []
+    for channel, on, start, end in restart_choices(tv_channels(CHANNEL_FIELDS + ['hasarchive']),
+                                                   channels.last_watched(), now):
+        cards.append({'title': tvrows.without_marks(on.get('title') or ''),
+                      'started': 'Started at %s' % time.strftime('%H:%M', time.localtime(start)),
+                      'thumb': on.get('thumbnail') or '', 'logo': channel.get('icon') or '',
+                      'plot': on.get('plot') or '', 'minutes': str(int((end - start) // 60)),
+                      'live': '1' if channels.is_live(on.get('genre')) else '',
+                      'channelid': str(channel['channelid']), 'start': str(int(start))})
+    return cards
+
+
 def restart_now(base, handle):
     """The guide's restart row's cards: OK plays the programme from its start
     (play_catchup, as the TV page's Catch up cards)."""
