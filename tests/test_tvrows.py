@@ -287,6 +287,17 @@ def test_a_live_card_says_how_long_is_left():
     assert rows[tvrows.TEAMS_ROW][1]['left'] == ''  # next week's
 
 
+
+def test_an_event_channels_lead_in_counts_down_to_its_start():
+    channels = [dict(c) for c in CHANNELS]
+    channels[4]['broadcastnow'] = dict(channels[4]['broadcastnow'], title='Next: Brentford v Everton at 18:25',
+                                       endtime='2026-11-07 16:05:00', progresspercentage=40.0)
+    card = tvrows.rows(channels, entries(), ['Newcastle United', 'Newcastle Utd'], NOW)[tvrows.RECENT_ROW][0]
+    assert card['left'] == 'Starts in 35 min'
+    assert card['percent'] == ''
+    assert tvrows.starts_in(NOW - datetime.timedelta(minutes=1), NOW) == ''
+    assert tvrows.starts_in(NOW + datetime.timedelta(minutes=65), NOW) == 'Starts in 1 h 5 min'
+
 ENDED = GUIDE.replace('</tv>', '''
 <programme start="20261107120000 +0000" stop="20261107140000 +0000" channel="TNT1.uk"><title>Premier League : Spurs v Wolves ᴸᶦᵛᵉ</title><icon src="http://i/s.png"/></programme>
 <programme start="20261107120000 +0000" stop="20261107140000 +0000" channel="SkyPL.uk"><title>Premier League : Spurs v Wolves ᴸᶦᵛᵉ</title></programme>

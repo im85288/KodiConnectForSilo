@@ -47,6 +47,9 @@ CARDS = 12
 AHEAD = datetime.timedelta(days=7)
 MATCH_WINDOW = datetime.timedelta(minutes=75)
 LIVE_MARKS = re.compile(r'ᴸᶦᵛᵉ|\bLIVE\b|\bLive\b')
+# The playlist server's lead-in before an event channel's event ("Next:
+# Premier League Brentford v Everton at 18:25"): its end is the event's start.
+LEAD_IN = re.compile(r'^Next: ')
 NOT_LIVE = re.compile(r'^(Next|Next Game|Coming up|Highlights|Replay)\b|\b(Highlights|Replay|Classic|Greatest)\b', re.I)
 FIXTURE = re.compile(r'\s(v\.?|vs\.?|@)\s', re.I)
 PLUGIN = 'plugin://plugin.video.kodiconnectforsilo/'
@@ -339,6 +342,14 @@ def left(stop, now):
     return time_left({'position': 1, 'total': 1 + (stop - now).total_seconds()})
 
 
+def starts_in(start, now):
+    """How long until a programme starts: 'Starts in 58 min', 'Starts in
+    1 h 5 min', or '' when it has started or isn't known."""
+    if not start or start <= now:
+        return ''
+    return 'Starts in %s' % left(start, now)[:-len(' left')]
+
+
 def broadcast_stop(on):
     """When a Kodi broadcast (broadcastnow) ends, as an aware datetime, or None."""
     try:
@@ -439,6 +450,9 @@ def plain_channel_card(channel, now, picture=''):
     on = channel.get('broadcastnow') or {}
     title = on.get('title') or ''
     progress = on.get('progresspercentage')
+    # A lead-in counts down to its event, which starts when it ends: no
+    # progress bar or time left, which would read as the event's.
+    lead_in = bool(LEAD_IN.match(title))
     # The hero: the programme's whole title, as the guide gives it ("Saturday
     # Night Football : Nottingham Forest v Manchester City"), as the TV page's
     # hero shows what's playing (without_marks, the service's tv.playing_title).
@@ -448,8 +462,8 @@ def plain_channel_card(channel, now, picture=''):
             'hero.meta': channel.get('label') or '',
             'hero.facts': '  ·  '.join(part for part in (channel.get('label') or '', times(on)) if part),
             'plot': on.get('plot') or '',
-            'percent': str(int(progress)) if progress else '',
-            'left': left(broadcast_stop(on), now),
+            'percent': str(int(progress)) if progress and not lead_in else '',
+            'left': starts_in(broadcast_stop(on), now) if lead_in else left(broadcast_stop(on), now),
             # The programme's picture, else (tv.logo) the channel's logo, which a
             # skin centres: a logo cropped to fill a landscape card is a mess.
             'art.landscape': picture, 'art.fanart': picture, 'tv.logo': channel.get('icon') or '',
