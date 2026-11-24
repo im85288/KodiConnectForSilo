@@ -200,6 +200,13 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.31.0 (2026-11-24)
+- **Live TV colour:** the playing programme's tint (`tv.playing_tint`, from the playlist server's `/tints.json` via
+  `tvrows.picture_tint`, which also reads Kodi's quoted `image://` addresses) for Skyline's OK screen shade and banner
+  card; Coming up next publishes the next programme's (`next.tint`).
+- **Channel starts:** a Live TV channel starting sets `live.switched` (`Player.onPlayBackStarted`, Kodi's `pvr://`
+  item), so Skyline keeps Kodi's banner for it hidden; cleared after 20 s if Skyline never saw the banner.
+
 ### v0.30.0 (2026-11-23)
 - **TV page tint:** each card with a picture from the playlist server's cache takes that picture's tint from its
   `/tints.json` (`tvrows.picture_tints`, `add_tints`), so Skyline's backdrop wash follows it as on Home.
