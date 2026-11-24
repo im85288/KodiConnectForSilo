@@ -1404,6 +1404,12 @@ class Service(object):
                 kodi.log_warning('TV banner: %s' % error)
                 picture, live = '', False
             kodi.set_property('tv.banner_picture', picture)
+            # The OK screen's shade takes the programme's colour (the TV page's tint).
+            try:
+                kodi.set_property('tv.playing_tint', tvrows.picture_tint(picture))
+            except Exception as error:  # the shade stays the skin's
+                kodi.log_warning('TV page: tint: %s' % error)
+                kodi.set_property('tv.playing_tint', '')
             # Sky Stream's banner: the next programmes alongside (banner.py).
             try:
                 from . import banner as banner_window

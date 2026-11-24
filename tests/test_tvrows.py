@@ -465,6 +465,20 @@ def test_cards_take_their_cached_pictures_tints():
     assert tvrows.picture_tints('/storage/list.m3u') == {}
 
 
+def test_the_playing_pictures_tint_is_fetched_at_most_a_minute_apart(monkeypatch):
+    uuid = 'a7f1b746-b4db-4ebc-8a26-7ee0826c026e'
+    asked = []
+    monkeypatch.setattr(tvrows, 'TINTS', {'at': 0.0, 'tints': {}})
+    monkeypatch.setattr(tvrows, 'picture_tints', lambda url: asked.append(url) or {uuid: 'FF33365D'})
+    picture = 'http://192.168.1.49:8097/img/%s.jpg' % uuid
+    assert tvrows.picture_tint(picture, now=100) == 'FF33365D'
+    assert tvrows.picture_tint(picture, now=110) == 'FF33365D' and len(asked) == 1  # kept
+    other = 'http://192.168.1.49:8097/img/%s.jpg' % ('b' * 8 + uuid[8:])
+    assert tvrows.picture_tint(other, now=120) == '' and len(asked) == 1  # not yet a minute
+    assert tvrows.picture_tint(other, now=161) == '' and len(asked) == 2
+    assert tvrows.picture_tint('logo.png', now=500) == '' and len(asked) == 2
+
+
 def test_a_guide_match_takes_the_same_sides_fixture_picture():
     fixtures = [('England', {'title': '2nd T20: Australia v England', 'start': 1000, 'thumb': 'badges.jpg'}),
                 ('England', {'title': 'England v Wales', 'start': 900, 'thumb': 'other.jpg'})]

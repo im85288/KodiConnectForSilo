@@ -125,6 +125,28 @@ def picture_tints(playlist):
     return found if isinstance(found, dict) else {}
 
 
+# The playlist server's tints, kept from the TV page's gather or fetched for
+# the playing programme's picture (picture_tint); asked again at most a
+# minute apart for a picture they don't have.
+TINTS = {'at': 0.0, 'tints': {}}
+
+
+def picture_tint(picture, now=None):
+    """The page tint (ARGB) for a cached programme picture (/img/<id>.jpg on
+    the playlist server, which serves /tints.json beside it): the OK screen
+    takes the playing programme's colour, as the TV page its card's. '' when
+    the picture is another's or has none yet."""
+    import time
+    found = PICTURE_ID.search(picture or '')
+    if not found:
+        return ''
+    now = time.time() if now is None else now
+    if found.group(1) not in TINTS['tints'] and now - TINTS['at'] >= 60:
+        TINTS['at'] = now
+        TINTS['tints'] = picture_tints(picture) or TINTS['tints']
+    return TINTS['tints'].get(found.group(1), '')
+
+
 def add_tints(cards, tints):
     """Each card with a cached picture takes that picture's tint (the TV
     page's backdrop colour, as Home's)."""
@@ -774,7 +796,10 @@ def gather(teams, reminded=(), now=None):
     from . import channels
     cards = rows(channel_list, entries, teams, now, reminded, pictures, known, fixtures, kodi.string(30228), leagues,
                  groups, ended, channels.load_removed())
-    add_tints(cards, picture_tints(playlist))
+    tints = picture_tints(playlist)
+    if tints:
+        TINTS['tints'] = tints
+    add_tints(cards, tints)
     return cards
 
 
