@@ -477,6 +477,8 @@ def test_the_playing_pictures_tint_is_fetched_at_most_a_minute_apart(monkeypatch
     assert tvrows.picture_tint(other, now=120) == '' and len(asked) == 1  # not yet a minute
     assert tvrows.picture_tint(other, now=161) == '' and len(asked) == 2
     assert tvrows.picture_tint('logo.png', now=500) == '' and len(asked) == 2
+    kodi_form = 'image://epgtag_4@http%%3a%%2f%%2f192.168.1.49%%3a8097%%2fimg%%2f%s.jpg/' % uuid
+    assert tvrows.picture_tint(kodi_form, now=600) == 'FF33365D'  # Kodi's quoted address
 
 
 def test_a_guide_match_takes_the_same_sides_fixture_picture():

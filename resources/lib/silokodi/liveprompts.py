@@ -13,7 +13,7 @@ from . import channels, kodi
 NEXT_BEFORE = 120      # seconds before the programme ends
 NEXT_SHOW = 20
 REFETCH = 30           # at most this often while the guide has nothing on now
-KEYS = ('next.title', 'next.time', 'next.picture')
+KEYS = ('next.title', 'next.time', 'next.picture', 'next.tint')
 WATCHING = 'Window.IsActive(fullscreenvideo) + VideoPlayer.Content(LiveTV) + !Player.ChannelPreviewActive'
 
 
@@ -73,7 +73,7 @@ class Prompts(object):
             self.now, self.next, self.archive = self.fetcher(self.channel)
             self.fetched_at = now
         if self.next_until and now >= self.next_until:
-            for key in ('next.title', 'next.time', 'next.picture'):
+            for key in KEYS:
                 kodi.set_property(key, '')
             self.next_until = 0
         if shows_next(self.now, self.next, now) and self.next_noted != self.next['start']:
@@ -82,6 +82,14 @@ class Prompts(object):
             kodi.set_property('next.title', self.next.get('title') or self.next.get('label') or '')
             kodi.set_property('next.time', time.strftime('%H:%M', time.localtime(self.next['start'])))
             kodi.set_property('next.picture', self.next.get('thumbnail') or '')
+            # The note's panel in the next programme's colour (the TV page's tint).
+            try:
+                from . import tvrows
+                tint = tvrows.picture_tint(self.next.get('thumbnail') or '')
+            except Exception as error:  # the panel stays the skin's
+                kodi.log_warning('Live TV: coming up next: tint: %s' % error)
+                tint = ''
+            kodi.set_property('next.tint', tint)
             kodi.log('Live TV: coming up next: %s' % self.next.get('title'))
 
     def tune(self, now):

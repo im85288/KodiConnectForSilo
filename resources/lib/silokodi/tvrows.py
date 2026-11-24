@@ -137,13 +137,17 @@ def picture_tint(picture, now=None):
     takes the playing programme's colour, as the TV page its card's. '' when
     the picture is another's or has none yet."""
     import time
-    found = PICTURE_ID.search(picture or '')
+    from urllib.parse import unquote
+    # Kodi's own picture addresses are image://...@<quoted address>/.
+    address = unquote(picture or '')
+    address = address[address.find('http'):] if 'http' in address else address
+    found = PICTURE_ID.search(address)
     if not found:
         return ''
     now = time.time() if now is None else now
     if found.group(1) not in TINTS['tints'] and now - TINTS['at'] >= 60:
         TINTS['at'] = now
-        TINTS['tints'] = picture_tints(picture) or TINTS['tints']
+        TINTS['tints'] = picture_tints(address) or TINTS['tints']
     return TINTS['tints'].get(found.group(1), '')
 
 
