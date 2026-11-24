@@ -85,6 +85,7 @@ PUBLISHED_PAGES = {'home': 20, 'requests': 12}
 # load from their paths as Movies' rows do. Skyline's HOME_PUBLISHED_ROWS.
 PUBLISHED_ROWS = {'home': 4, 'requests': 12}
 TV_REFRESH = 300  # seconds between the TV page's rows (Skyline): what's on, and live matches
+SWITCHED_FOR = 20  # seconds Skyline may wait for Kodi's banner after a Live TV start (onPlayBackStarted)
 GUIDE_LOGO_EVERY = 0.1  # seconds between looks at the guide's focused channel (watch_guide_logo)
 TV_WATCHED_WAIT = 5  # seconds after a channel is watched before On now is rebuilt
 # The playing title's details for a skin's player (silokodi.playing.*).
@@ -134,6 +135,21 @@ class Player(xbmc.Player):
     def onPlayBackStarted(self):
         # Anything starting (a film over a theme tune's page): Kodi's volume as it was.
         self.service.theme.restore_volume()
+        # A Live TV channel starting: Kodi shows its banner for Display channel
+        # info's seconds; Skyline keeps it hidden (live.switched: 1, then 2 once
+        # it has seen the banner) unless the viewer browses or asks for it.
+        # (getPlayingFile gives the channel's stream address; Kodi's item is pvr://.)
+        if xbmc.getInfoLabel('Player.FilenameAndPath').startswith('pvr://channels/'):
+            kodi.set_property('live.switched', '1')
+            stamp = time.time()
+            self.switched_at = stamp
+            threading.Timer(SWITCHED_FOR, self.end_switched, args=(stamp,)).start()
+
+    def end_switched(self, stamp):
+        """Skyline never saw Kodi's banner for that start (Display channel info
+        Off, say): stop hiding, so a later banner shows."""
+        if getattr(self, 'switched_at', None) == stamp and kodi.get_property('live.switched') == '1':
+            kodi.set_property('live.switched', '')
 
     def onPlayBackPaused(self):
         self.paused_at = time.time()
