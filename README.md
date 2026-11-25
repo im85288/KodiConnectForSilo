@@ -201,6 +201,10 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.33.1 (2026-11-25)
+- **Keys while browsing channels:** the Live TV keymap gains `FullscreenLiveTvPreview` (Kodi looks keys up there
+  first during a channel preview, where OK is Select): OK goes through Skyline's OK screen, long OK opens the TV guide.
+
 ### v0.33.0 (2026-11-25)
 - **Quick guide retired:** Skyline's quick guide is gone (its window opens the TV guide), so the service's
   `quick.py` thread, the `schedule`, `schedule_days` and `play_broadcast` modes and `channels.py`'s schedule helpers
