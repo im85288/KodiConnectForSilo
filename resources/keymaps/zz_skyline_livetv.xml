@@ -40,4 +40,22 @@
       <right mod="longpress">SetProperty(silo.live.step,2,home)</right>
     </remote>
   </FullscreenLiveTV>
+  <!-- While browsing channels (Kodi's channel preview), Kodi looks keys up here
+       first: its own section maps OK to Select (watch the one shown), and a long
+       OK, unmapped, fell back to that, playing the browsed channel instead of
+       opening the guide. Here OK goes through the OK screen (window 1196), which
+       watches the one shown, or opens as usual once Back has hidden the banner;
+       long OK the TV guide, as when not browsing. -->
+  <FullscreenLiveTvPreview>
+    <keyboard>
+      <return>ActivateWindow(1196)</return>
+      <enter>ActivateWindow(1196)</enter>
+      <return mod="longpress">SetProperty(silo.live.longok,1,home)</return>
+      <enter mod="longpress">SetProperty(silo.live.longok,1,home)</enter>
+    </keyboard>
+    <remote>
+      <select>ActivateWindow(1196)</select>
+      <select mod="longpress">SetProperty(silo.live.longok,1,home)</select>
+    </remote>
+  </FullscreenLiveTvPreview>
 </keymap>
