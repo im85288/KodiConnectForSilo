@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.33.1" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.34.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.33.1: Live TV: a long OK while browsing channels (even after Back hid the banner) opens the TV guide instead of playing the browsed channel; after Back, OK opens the recent channels.
+    <news>0.34.0: TV page (Skyline 0.26.0): live and upcoming matches carry Sky's LIVE / UPCOMING tags, upcoming ones show just the time; Remove from recent channels on the TV page works again.
+
+0.33.1: Live TV: a long OK while browsing channels (even after Back hid the banner) opens the TV guide instead of playing the browsed channel; after Back, OK opens the recent channels.
 
 0.33.0: tidy-up for Skyline 0.25.0: the Live TV quick guide's code is gone (the TV guide replaces it); one less background task.
 
@@ -45,8 +47,6 @@
 
 0.30.0: TV page (Skyline 0.22.0): the backdrop takes the focused card's picture's colour, as Home; a card's backdrop is its own picture (not a team's photo of another sport); matches without a picture take one of the same sides; the playlist server's hidden groups (Peacock, Sky Sports+) have no row.
 
-0.29.2: for Skyline 0.21.1's TV guide: the channels the playlist plays in UHD, for its HD/UHD badge; the Restart what's on now row's lengths as 1h 30m.
-
-0.29.1: TV page: an event channel's lead-in card says Starts in 47 min, with no progress bar, not the time left; a group row with nothing on (Match day between Newcastle's matches) is hidden.</news>
+0.29.2: for Skyline 0.21.1's TV guide: the channels the playlist plays in UHD, for its HD/UHD badge; the Restart what's on now row's lengths as 1h 30m.</news>
   </extension>
 </addon>

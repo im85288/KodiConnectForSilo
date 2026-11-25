@@ -201,6 +201,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.34.0 (2026-11-25)
+- **LIVE / UPCOMING:** match cards carry `tv.tag` (LIVE while on, UPCOMING before), fixture cards UPCOMING, for
+  Skyline's tags; an upcoming card's text is the time alone (no channel count).
+- **Recent channels:** `rows.FIELDS` gains `tv.recent` (and `tv.tag`): the TV page's Remove from recent channels
+  read a field that never reached the skin.
+
 ### v0.33.1 (2026-11-25)
 - **Keys while browsing channels:** the Live TV keymap gains `FullscreenLiveTvPreview` (Kodi looks keys up there
   first during a channel preview, where OK is Select): OK goes through Skyline's OK screen, long OK opens the TV guide.
