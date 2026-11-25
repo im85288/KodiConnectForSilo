@@ -64,10 +64,11 @@ def test_a_match_is_one_card_across_its_channels_english_first():
     teams = rows[tvrows.TEAMS_ROW]
     assert [c['card.title'] for c in teams] == ['Fulham v Newcastle Utd', 'Newcastle United v Chelsea']
     today = teams[0]
-    assert today['card.sub'] == 'LIVE · 3 channels'
+    assert today['card.sub'] == '3 channels' and today['tv.tag'] == 'LIVE'
     assert today['tv.play'].endswith('mode=tv_watch&ids=1,2,3')  # the Spanish feed last
     assert today['percent'] == '22'
     assert 'mode=tv_remind' in teams[1]['tv.play'] and '3 channels' not in teams[1]['card.sub']
+    assert teams[1]['tv.tag'] == 'UPCOMING'
 
 
 def test_whole_names_only():

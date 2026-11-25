@@ -501,7 +501,7 @@ def guide_match_card(match, channels, now, reminded=()):
     feeds = '%d channel%s' % (count, '' if count == 1 else 's')
     key = '%d' % int(match['start'].timestamp())
     if on:
-        sub = 'LIVE · %s' % feeds
+        sub = feeds  # Skyline's LIVE tag (tv.tag) says it's on
         action = ('%s?mode=play_channel&id=%s' % (PLUGIN, ids[0]) if count == 1 else
                   '%s?mode=tv_watch&ids=%s' % (PLUGIN, ','.join(ids)))
     else:
@@ -522,7 +522,9 @@ def guide_match_card(match, channels, now, reminded=()):
             'hero.detail': '  ·  '.join(n for n in match['channels'] if n in channels),
             'plot': match.get('desc', ''), 'percent': percent(match['start'], match['stop'], now) if on else '',
             'left': left(match['stop'], now) if on else '',
-            'art.landscape': art, 'art.fanart': art, 'tv.logo': logo, 'tv.play': action}
+            'art.landscape': art, 'art.fanart': art, 'tv.logo': logo, 'tv.play': action,
+            # Sky OS 2.0's tag on the card: LIVE (red) while it's on, UPCOMING (grey) before.
+            'tv.tag': 'LIVE' if on else 'UPCOMING'}
 
 
 def times(on):
@@ -553,7 +555,8 @@ def fixture_card(fixture, team, now, reminded=(), unknown='channel not known yet
             'card.wide_sub': sub, 'hero.title': fixture['title'], 'hero.meta': when(start, now), 'hero.facts': facts,
             'plot': '', 'percent': '', 'art.landscape': fixture.get('thumb') or '', 'art.fanart': '',
             'tv.logo': team.get('badge') or '',
-            'tv.play': '%s?mode=tv_remind&start=%d&ids=&title=%s' % (PLUGIN, fixture['start'], quote(fixture['title']))}
+            'tv.play': '%s?mode=tv_remind&start=%d&ids=&title=%s' % (PLUGIN, fixture['start'], quote(fixture['title'])),
+            'tv.tag': 'UPCOMING'}
     card.update(team_art(team, fixture['title']))
     return card
 
