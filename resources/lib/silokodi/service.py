@@ -1393,9 +1393,26 @@ class Service(object):
         finally:
             self.tv_publishing = False
 
+    def publish_catchup_logo(self):
+        """A programme playing from catch-up: its channel's logo for Skyline's
+        player (tv.catchup_logo; Kodi's icon for it is the programme's picture),
+        asked only as the channel changes."""
+        name = xbmc.getInfoLabel('VideoPlayer.ChannelName') \
+            if xbmc.getCondVisibility('PVR.IsPlayingEpgTag') else ''
+        if name == getattr(self, 'catchup_for', ''):
+            return
+        self.catchup_for = name
+        try:
+            logo = tvrows.channel_logo(name) if name else ''
+        except Exception as error:  # the line shows without it
+            kodi.log_warning('Catch up: logo: %s' % error)
+            logo = ''
+        kodi.set_property('tv.catchup_logo', logo)
+
     def publish_tv_title(self):
         """What Live TV is playing, without the guide's live mark, for
         Skyline's TV page hero (tv.playing_title): its cards' titles are so."""
+        self.publish_catchup_logo()
         title, channel = '', ''
         if xbmc.getCondVisibility('VideoPlayer.Content(LiveTV)'):
             title = tvrows.without_marks(xbmc.getInfoLabel('VideoPlayer.Title'))
