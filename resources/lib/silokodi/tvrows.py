@@ -505,7 +505,9 @@ def guide_match_card(match, channels, now, reminded=()):
         action = ('%s?mode=play_channel&id=%s' % (PLUGIN, ids[0]) if count == 1 else
                   '%s?mode=tv_watch&ids=%s' % (PLUGIN, ','.join(ids)))
     else:
-        sub = '%s · %s' % (when(match['start'], now), feeds)
+        # The time alone, as Sky OS 2.0's UPCOMING cards (the channels came after it and
+        # pushed it to "Today 17:45 · 1 ch..." on a card).
+        sub = when(match['start'], now)
         if key in reminded or reminded_near(int(key), reminded):
             sub += ' · reminder set'
         action = '%s?mode=tv_remind&start=%s&ids=%s&title=%s' % (PLUGIN, key, ','.join(ids), quote(match['title']))

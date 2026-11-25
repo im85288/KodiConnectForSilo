@@ -433,7 +433,8 @@ def test_coming_up_live_lists_events_starting_soon_once_each_soonest_first():
     cards = tvrows.upcoming(entries, channels, now, reminded={str(int((now + 3 * hour).timestamp())): {}},
                             groups={'Sky News': 'News'})
     assert [c['card.title'] for c in cards] == ['Celtic v Napoli', 'Brentford v Everton']
-    assert 'reminder set' in cards[0]['card.sub'] and '2 channels' in cards[1]['card.sub']
+    assert 'reminder set' in cards[0]['card.sub'] and 'channels' not in cards[1]['card.sub']
+    assert all(c['tv.tag'] == 'UPCOMING' for c in cards)
     assert all('mode=tv_remind' in c['tv.play'] for c in cards)
 
 
