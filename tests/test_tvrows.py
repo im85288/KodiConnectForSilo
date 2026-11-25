@@ -505,3 +505,11 @@ def test_groups_marked_off_the_tv_page_have_no_row():
             '#EXTINF:-1 tvpage="no" tvg-id="b" group-title="Peacock",Peacock 03\nhttp://y\n')
     assert tvrows.playlist_groups(text) == {'Sky Sports Main Event': 'Sky Sports'}
 
+
+
+def test_the_channel_playing_counts_as_watched_now_unless_previewed():
+    watched = {611: 100, 639: 200}
+    assert tvrows.with_playing(watched, 611, {}, now=500) == {611: 500, 639: 200}
+    assert tvrows.with_playing(watched, 641, {}, now=500)[641] == 500  # never watched before
+    assert tvrows.with_playing(watched, 611, {'611': {'at': 490}}, now=500) == watched  # a TV page preview
+    assert tvrows.with_playing(watched, None, {}, now=500) == watched

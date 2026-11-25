@@ -768,6 +768,19 @@ def kodi_channels():
     return found
 
 
+def with_playing(watched, playing, previews, now=None):
+    """watched, with the channel playing full screen as watched now: Kodi
+    writes a channel's time to its database only as it stops, so the channel
+    you're watching was missing from Recent channels until then. A TV page
+    preview (still in previews) doesn't count."""
+    import time
+    if playing is None or str(playing) in (previews or {}):
+        return watched
+    out = dict(watched)
+    out[playing] = int(now or time.time())
+    return out
+
+
 FIXTURES_AHEAD = 30 * 86400  # a next fixture further off than this isn't shown
 
 
@@ -794,6 +807,15 @@ def gather(teams, reminded=(), now=None):
     channel_list = kodi_channels()
     if not channel_list:
         return {row: [] for row, _ in ROWS}
+    from . import channels as channel_store
+    try:
+        playing = playing_channel()
+        times = with_playing({c.get('channelid'): c.get('lastplayed') or 0 for c in channel_list}, playing,
+                             channel_store.load_previews())
+        for channel in channel_list:
+            channel['lastplayed'] = times.get(channel.get('channelid'), 0)
+    except Exception as error:  # Kodi's database times, then
+        kodi.log_warning('TV page: playing channel: %s' % error)
     playlist, guide = sources(kodi.addon_data_dir())
     entries, pictures, groups, ended = [], {}, {}, []
     if playlist and guide:
