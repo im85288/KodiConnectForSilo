@@ -105,7 +105,7 @@ the same properties.
   Episode"), `dismiss` (removable from Continue Watching), `rank` (a numbered Top 10 row) and `place` (a title
   in the first ten of a chart row such as Trending This Week, IMDb Popular or Popular on..., numbered or not).
 - **For its pages:** a title's trailers, watchlist state and ambient tint, person pages, collections, More
-  Like This, the Live TV quick guide (with its channel groups on Left, as TiviMate's), catch-up and recent channels, Silo's markers for the seek bar, and the
+  Like This, Live TV's catch-up and recent channels, Silo's markers for the seek bar, and the
   playing title's details for the player, with its season and next episode for Episodes and Next Episode
   buttons (`silokodi.playing.season_path`, `.episode_index`, `.next`, `.next_label`). `silokodi.signed_in` says whether you are signed in.
 - **TV page** (when Kodi has TV channels, from IPTV Simple's playlist and guide): rows On now (the channels you
@@ -125,7 +125,8 @@ the same properties.
   Kodi's own **Settings -> Player -> Videos -> Dolby Vision compatibility mode**, which converts profile 7
   (UHD Blu-ray remuxes) to 8.1. Without the profile 7 option Silo strips such files to HDR10 in a converted
   4K stream, which the SHIELD can't hardware-decode in Kodi; the add-on refuses those with a message.
-- **Playback -> Live TV keys as TiviMate** (with Skyline): OK the recent channels, Left the quick guide.
+- **Playback -> Live TV keys** (with Skyline): OK the recent channels, Up/Down browse channels, Left/Right the
+  channel watched before (with the banner up, its earlier and later programmes).
 - **Playback -> My teams** (with Skyline's TV page): your teams, comma separated (`Newcastle United, Newcastle
   Utd`): every name a guide may use for a team.
 - **Playback -> Live sport groups** (with Skyline's TV page): a tick list of your playlist's groups for Live
@@ -155,7 +156,7 @@ the same properties.
 | Home's rows as properties; titles' details and their cache | `rows.py`, `library.py` |
 | Home's saved layout and cards at start-up | `quickstart.py` |
 | Watchlist, Favourites, History | `personal.py` |
-| Live TV: recent channels, quick guide, catch-up | `channels.py`, `quick.py`, `catchup.py` |
+| Live TV: recent channels, catch-up | `channels.py`, `catchup.py` |
 | Skyline's keymaps; context menu items | `keymap.py`, `context.py` |
 
 Items are written with add-on paths (`plugin://plugin.video.kodiconnectforsilo/movies/?mode=play&id=...`), so

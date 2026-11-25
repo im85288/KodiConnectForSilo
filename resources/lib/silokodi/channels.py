@@ -124,79 +124,12 @@ def remove(channel_id, watched):
     fileio.write_json(removed_path(), removed)
 
 
-CATCHUP_DAYS = 7
-AHEAD_DAYS = 7
-
-
-def day_header(day, today):
-    """A schedule's day header: Yesterday, Today, Tomorrow, else "Mon, 26 Oct"."""
-    offset = (day - today).days
-    return {-1: 'Yesterday', 0: 'Today', 1: 'Tomorrow'}.get(offset) or day_label(day)
 
 
 def is_live(genre):
     """Whether a Kodi broadcast's genre ([text] or text) says it's shown live."""
     texts = genre if isinstance(genre, list) else [genre or '']
     return any(part.strip().lower() == 'live' for text in texts for part in str(text).split('/'))
-
-
-def schedule_rows(broadcasts, now, archive, local=None):
-    """A channel's programmes (dicts with broadcastid, title, start, end in
-    epoch seconds) as schedule rows, from CATCHUP_DAYS back to AHEAD_DAYS
-    ahead: a {'header'} row where the day changes (with its 'date' and
-    whether it is 'today'), then each programme with 'when' (past, now or
-    future) and 'archive' (past and catch-up can play it). Every row has
-    'day', the day's number from the first."""
-    import datetime
-    local = local or (lambda epoch: datetime.datetime.fromtimestamp(epoch))
-    today = local(now).date()
-    rows, day, number = [], None, -1
-    for broadcast in sorted(broadcasts, key=lambda b: b['start']):
-        date = local(broadcast['start']).date()
-        if not -CATCHUP_DAYS <= (date - today).days <= AHEAD_DAYS:
-            continue
-        if date != day:
-            day, number = date, number + 1
-            rows.append({'header': day_header(date, today), 'date': date, 'today': date == today, 'day': number})
-        when = 'past' if broadcast['end'] <= now else 'now' if broadcast['start'] <= now else 'future'
-        rows.append({'title': broadcast.get('title') or broadcast.get('label') or '', 'start': broadcast['start'],
-                     'end': broadcast['end'], 'plot': broadcast.get('plot') or '', 'date': date, 'day': number,
-                     'broadcastid': broadcast.get('broadcastid'), 'when': when,
-                     'archive': when == 'past' and archive,
-                     # The programme's picture, and whether it's shown live (the guide's
-                     # Live category, Kodi's genre with IPTV Simple's useEpgGenreText).
-                     'picture': broadcast.get('thumbnail') or '', 'live': is_live(broadcast.get('genre'))})
-    return rows
-
-
-def day_label(day):
-    """A day as the day column and the programme card show it: "Tue, 27 Oct"."""
-    return '%s, %d %s' % (day.strftime('%a'), day.day, day.strftime('%b'))
-
-
-def around_now(rows, before=2):
-    """The rows from a couple of programmes before the one on now, with its
-    day's header: what the quick guide shows before the viewer moves in."""
-    now = next((i for i, row in enumerate(rows) if row.get('when') == 'now'), None)
-    if now is None:
-        now = next((i for i, row in enumerate(rows) if row.get('when') == 'future'), len(rows))
-    start = now
-    while start > 0 and now - start < before and not rows[start - 1].get('header'):
-        start -= 1
-    header = next((i for i in range(start, -1, -1) if rows[i].get('header')), None) if rows else None
-    picked = rows[start:]
-    return ([rows[header]] + picked) if header is not None and header < start else picked
-
-
-def find_channel(number, name, found=None):
-    """A Live TV channel by the skin's number, else its name (with catch-up).
-    found: Kodi's channel list, if already read."""
-    if found is None:
-        found = (kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv', properties=['channelnumber', 'hasarchive'])
-                 or {}).get('channels') or []
-    return next((c for c in found if str(c.get('channelnumber')) == str(number or '').strip()
-                 and (not name or c.get('label') == name)), None) or \
-        next((c for c in found if c.get('label') == name), None)
 
 
 def utc_seconds(stamp):
@@ -215,36 +148,3 @@ def channel_broadcasts(channel):
     for broadcast in broadcasts:
         broadcast['start'], broadcast['end'] = (utc_seconds(broadcast[key]) for key in ('starttime', 'endtime'))
     return broadcasts
-
-
-def channel_schedule(channel, now=None, broadcasts=None):
-    """The channel's programmes as schedule_rows, from Kodi's guide."""
-    if broadcasts is None:
-        broadcasts = channel_broadcasts(channel)
-    return schedule_rows(broadcasts, now or time.time(), bool(channel.get('hasarchive')))
-
-
-def items(rows, channel, clock):
-    """Schedule rows as a skin's list items: (label, label2, properties).
-    Label2 is the start time in Kodi's time format (clock); silo.header
-    marks a day header, silo.now the one on now, silo.archive a past one
-    catch-up can play; silo.day is the row's day (the day column's),
-    silo.timeline and silo.plot fill the skin's programme card."""
-    def at(epoch):
-        return time.strftime(clock, time.localtime(epoch)).lstrip('0')
-    found = []
-    for row in rows:
-        if row.get('header'):
-            found.append((row['header'], '', {'silo.header': '1', 'silo.day': str(row['day']),
-                                              'silo.today': '1' if row['today'] else ''}))
-            continue
-        found.append((row['title'], at(row['start']), {
-            'silo.day': str(row['day']), 'silo.plot': row['plot'],
-            'silo.timeline': '%s, %s — %s' % (day_label(row['date']), at(row['start']), at(row['end'])),
-            'silo.now': '1' if row['when'] == 'now' else '',
-            'silo.past': '1' if row['when'] == 'past' else '',
-            'silo.archive': '1' if row.get('archive') else '',
-            'silo.when': row['when'],
-            'silo.times': '%s – %s' % (at(row['start']), at(row['end'])),
-            'silo.broadcastid': str(row['broadcastid']), 'silo.channelid': str(channel['channelid'])}))
-    return found

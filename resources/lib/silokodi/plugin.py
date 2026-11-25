@@ -148,8 +148,6 @@ def run(argv):
         return watch((params.get('ids') or '').split(','))
     if mode == 'tv_remind':
         return tv_remind(params.get('start') or '', (params.get('ids') or '').split(','), params.get('title') or '')
-    if mode == 'previous_channel':
-        return previous_channel()
     if mode == 'banner_step':
         # Left (-1) or Right (+1) in Live TV (Skyline's silo_live_left/right timers,
         # which open the banner first if it isn't up): the programme before or after.
@@ -163,13 +161,6 @@ def run(argv):
         return None
     if mode == 'forget_channel':
         return forget_channel(params.get('id'))
-    if mode == 'schedule':
-        # The name as the skin wrote it (it can't URL-encode one), last in the path.
-        return schedule(base, handle, params.get('number'), raw_tail(argv, 'name'), params.get('full') == '1')
-    if mode == 'schedule_days':
-        return schedule_days(handle, params.get('number'), raw_tail(argv, 'name'))
-    if mode == 'play_broadcast':
-        return play_broadcast(params.get('id'), params.get('channel'), params.get('when'))
     if mode == 'videos':
         return videos(base, handle, params.get('id'))
     if mode == 'cast':
@@ -384,12 +375,6 @@ def tv_remind(start, ids, title):
     kodi.set_property('tv.refresh', '1')  # the card says so
 
 
-def previous_channel():
-    """Back to the channel watched before this one (Right in Skyline's Live TV keys)."""
-    channel = channels.previous(tv_channels(), channels.last_watched(), playing_channel())
-    if channel:
-        kodi.jsonrpc('Player.Open', item={'channelid': channel['channelid']})
-
 
 def forget_channel(channel_id):
     """Leave a channel out of the recent row until it is watched again, and
@@ -399,42 +384,6 @@ def forget_channel(channel_id):
         kodi.set_property('recent_changed', str(int(time.time())))
 
 
-def schedule(base, handle, number, name, full=False):
-    """A Live TV channel's programmes for a Silo-style skin's quick guide, as
-    TiviMate's: from just before the one on now (full: from the catch-up
-    days back to a week ahead), as channels.items.
-    silokodi.schedule_now is the row on now, for the skin to focus. (The
-    short schedule beside the channel list comes from the service: quick.py.)"""
-    channel = channels.find_channel(number, name)
-    rows = channels.channel_schedule(channel) if channel else []
-    if not full:
-        rows = channels.around_now(rows)
-    clock = xbmc.getRegion('time').replace(':%S', '')
-    for index, (label, label2, props) in enumerate(channels.items(rows, channel, clock)):
-        item = xbmcgui.ListItem(label, label2, offscreen=True)
-        item.setProperties(props)
-        xbmcplugin.addDirectoryItem(handle, '', item, isFolder=False)
-        if full and props.get('silo.when') == 'now':
-            kodi.set_property('schedule_now', str(index))
-    if full:
-        # Which channel schedule_now is for: the skin waits for this one's.
-        kodi.set_property('schedule_for', str(number or '').strip())
-    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
-
-
-def schedule_days(handle, number, name):
-    """The days of a channel's full schedule, for the quick guide's day
-    column, as TiviMate's: "Tue," over "27 Oct", silo.day its number (as the
-    schedule's rows), silo.first the row of its first programme, silo.today."""
-    channel = channels.find_channel(number, name)
-    for index, row in enumerate(channels.channel_schedule(channel) if channel else []):
-        if row.get('header'):
-            # On two lines in the skin's tall rows, as TiviMate's: "Fri," over "30 Oct".
-            item = xbmcgui.ListItem(channels.day_label(row['date']).replace(', ', ',[CR]'), offscreen=True)
-            item.setProperties({'silo.day': str(row['day']), 'silo.first': str(index + 1),
-                                'silo.today': '1' if row['today'] else ''})
-            xbmcplugin.addDirectoryItem(handle, '', item, isFolder=False)
-    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
 
 
 RESTART_AFTER = 5 * 60   # a programme this far in is worth restarting
@@ -526,15 +475,6 @@ def play_catchup(channel_id, start):
     else:
         kodi.notify('That programme is no longer in the guide')
 
-
-def play_broadcast(broadcast_id, channel_id, when):
-    """A programme from the quick guide's schedule: on now, its channel live;
-    past, from catch-up (Kodi's IPTV add-on builds the archive's address)."""
-    kodi.log('Quick guide: play %s programme %s on channel %s' % (when, broadcast_id, channel_id))
-    if when == 'now' and str(channel_id or '').isdigit():
-        kodi.jsonrpc('Player.Open', item={'channelid': int(channel_id)})
-    elif when == 'past' and str(broadcast_id or '').isdigit():
-        kodi.jsonrpc('Player.Open', item={'broadcastid': int(broadcast_id)})
 
 
 def videos(base, handle, content_id):

@@ -1,5 +1,6 @@
-"""Keys for the Silo Skyline skin: Live TV's, as TiviMate's (OK the recent
-channels, Left the quick guide, Up/Down the channel above or below), the
+"""Keys for the Silo Skyline skin: Live TV's (OK the recent channels, Up/Down
+the channel above or below, Left/Right the channel watched before or, with the
+banner up, its programmes), the
 player's (Back on the pause screen only dismisses it) and Home's (the
 context menu key on a Continue Watching card offers Remove).
 

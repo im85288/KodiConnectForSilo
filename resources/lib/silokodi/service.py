@@ -16,7 +16,7 @@ import requests
 import xbmc
 import xbmcgui
 
-from . import catchup, jump, kodi, kodidb, mapping, migrate, quick, tracks, upnext, keymap
+from . import catchup, jump, kodi, kodidb, mapping, migrate, tracks, upnext, keymap
 from . import bigart, channels, commands, display, liveprompts, playeraudio, playersubs, skinoptions, theme, tvrows
 from .theme import ThemePlayer
 from . import api
@@ -447,10 +447,6 @@ class Service(object):
         trailers = threading.Thread(target=self.watch_trailers, name='silokodi-trailers')
         trailers.daemon = True
         trailers.start()
-        # The Live TV quick guide's short schedule (idle unless it's open).
-        guide = threading.Thread(target=quick.QuickGuide(self.monitor).watch, name='silokodi-quick-guide')
-        guide.daemon = True
-        guide.start()
         logos = threading.Thread(target=self.watch_guide_logo, name='silokodi-guide-logo')
         logos.daemon = True
         logos.start()

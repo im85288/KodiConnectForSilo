@@ -49,52 +49,12 @@ def _schedule():
     return channels.schedule_rows(broadcasts, day(28, 20), archive=True), day
 
 
-def test_a_schedule_has_day_headers_and_marks_now_and_catch_up():
-    rows, _ = _schedule()
-    assert [r.get('header') or r['title'] for r in rows] == [
-        'Yesterday', 'Late', 'Today', 'Breakfast', 'Cricket', 'Desk', 'Football', 'Tomorrow', 'Tomorrow']
-    football = next(r for r in rows if r.get('title') == 'Football')
-    assert football['when'] == 'now' and not football['archive']
-    assert next(r for r in rows if r.get('title') == 'Late')['archive']   # yesterday's, playable
-    assert 'Old' not in [r.get('title') for r in rows]                    # beyond the catch-up days
-
-
-def test_before_moving_in_the_schedule_starts_just_before_now():
-    rows, _ = _schedule()
-    assert [r.get('header') or r['title'] for r in channels.around_now(rows)] == [
-        'Today', 'Cricket', 'Desk', 'Football', 'Tomorrow', 'Tomorrow']
-
-
-def test_day_headers_read_like_tivimates():
-    import datetime
-    today = datetime.date(2026, 10, 28)
-    assert [channels.day_header(today + datetime.timedelta(days=n), today) for n in (-2, -1, 0, 1, 2)] == [
-        'Mon, 26 Oct', 'Yesterday', 'Today', 'Tomorrow', 'Fri, 30 Oct']
-
-
-def test_every_row_knows_its_day_for_the_day_column():
-    import datetime
-    rows, _ = _schedule()
-    assert [r['day'] for r in rows] == [0, 0, 1, 1, 1, 1, 1, 2, 2]
-    assert [r['today'] for r in rows if r.get('header')] == [False, True, False]
-    assert channels.day_label(datetime.date(2026, 10, 27)) == 'Tue, 27 Oct'
-
-
 def test_guide_times_parse_without_strptime():
     import calendar
     import time
     from resources.lib.silokodi.channels import utc_seconds
     for stamp in ('2026-11-01 20:00:00', '2026-01-31 00:05:09'):
         assert utc_seconds(stamp) == calendar.timegm(time.strptime(stamp, '%Y-%m-%d %H:%M:%S'))
-
-
-def test_group_steps_go_the_shorter_way_round():
-    from resources.lib.silokodi.quick import steps_to
-    names = ['All', 'UK | News', 'UK | Sports', 'UK | Sky Sports', 'US | News']
-    assert steps_to(names, 'UK | News', 'UK | Sky Sports') == 2
-    assert steps_to(names, 'UK | Sky Sports', 'UK | News') == -2
-    assert steps_to(names, 'All', 'US | News') == -1
-    assert steps_to(names, 'UK | Sports', 'UK | Sports') == 0
 
 
 def test_a_preview_isnt_watching(tmp_path, monkeypatch):
