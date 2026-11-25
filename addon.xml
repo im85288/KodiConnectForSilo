@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.32.0" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.33.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.32.0: Live TV (Skyline 0.24.0): Left/Right with no banner go back to the channel watched before; catch-up shows its channel's logo in the player.
+    <news>0.33.0: tidy-up for Skyline 0.25.0: the Live TV quick guide's code is gone (the TV guide replaces it); one less background task.
+
+0.32.0: Live TV (Skyline 0.24.0): Left/Right with no banner go back to the channel watched before; catch-up shows its channel's logo in the player.
 
 0.31.0: Live TV (Skyline 0.23.0): the OK screen, the banner and Coming up next take the programme's colour, as the TV page; Kodi's banner as a channel starts stays hidden (browse or press Info to see it).
 

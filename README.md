@@ -201,6 +201,11 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.33.0 (2026-11-25)
+- **Quick guide retired:** Skyline's quick guide is gone (its window opens the TV guide), so the service's
+  `quick.py` thread, the `schedule`, `schedule_days` and `play_broadcast` modes and `channels.py`'s schedule helpers
+  go; `previous_channel` too (`last_channel` does the same).
+
 ### v0.32.0 (2026-11-25)
 - **Last channel:** `mode=last_channel` plays the channel watched before the playing one (`channels.previous`), for
   Skyline's Left/Right in Live TV with no banner up.
