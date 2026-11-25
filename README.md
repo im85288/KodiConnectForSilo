@@ -200,6 +200,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.32.0 (2026-11-25)
+- **Last channel:** `mode=last_channel` plays the channel watched before the playing one (`channels.previous`), for
+  Skyline's Left/Right in Live TV with no banner up.
+- **Catch-up logo:** while a programme plays from catch-up, its channel's logo is published as `tv.catchup_logo`
+  (Kodi's icon for it is the programme's picture).
+
 ### v0.31.0 (2026-11-24)
 - **Live TV colour:** the playing programme's tint (`tv.playing_tint`, from the playlist server's `/tints.json` via
   `tvrows.picture_tint`, which also reads Kodi's quoted `image://` addresses) for Skyline's OK screen shade and banner

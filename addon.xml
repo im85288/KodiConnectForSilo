@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.31.0" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.32.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.31.0: Live TV (Skyline 0.23.0): the OK screen, the banner and Coming up next take the programme's colour, as the TV page; Kodi's banner as a channel starts stays hidden (browse or press Info to see it).
+    <news>0.32.0: Live TV (Skyline 0.24.0): Left/Right with no banner go back to the channel watched before; catch-up shows its channel's logo in the player.
+
+0.31.0: Live TV (Skyline 0.23.0): the OK screen, the banner and Coming up next take the programme's colour, as the TV page; Kodi's banner as a channel starts stays hidden (browse or press Info to see it).
 
 0.30.0: TV page (Skyline 0.22.0): the backdrop takes the focused card's picture's colour, as Home; a card's backdrop is its own picture (not a team's photo of another sport); matches without a picture take one of the same sides; the playlist server's hidden groups (Peacock, Sky Sports+) have no row.
 
@@ -43,8 +45,6 @@
 
 0.29.1: TV page: an event channel's lead-in card says Starts in 47 min, with no progress bar, not the time left; a group row with nothing on (Match day between Newcastle's matches) is hidden.
 
-0.29.0: Live TV as Sky Stream (Skyline 0.21.0): the TV guide's Restart what's on now row plays a programme from its start; Left/Right rewind or fast-forward 10 s (held, 5 min) unless the banner is up; the banner shows the next two programmes. The Start from the beginning note on tuning in is gone.
-
-0.28.0: TV page (Skyline 0.20.0): a Coming up live row of live events starting in the next 12 hours (not news), soonest first; OK sets a reminder. A long press on a recent channel removes it again, on the TV page and on the OK screen while a channel plays.</news>
+0.29.0: Live TV as Sky Stream (Skyline 0.21.0): the TV guide's Restart what's on now row plays a programme from its start; Left/Right rewind or fast-forward 10 s (held, 5 min) unless the banner is up; the banner shows the next two programmes. The Start from the beginning note on tuning in is gone.</news>
   </extension>
 </addon>
