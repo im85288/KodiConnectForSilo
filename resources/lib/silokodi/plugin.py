@@ -130,6 +130,10 @@ def run(argv):
         return restart_now(base, handle)
     if mode == 'recent_channels':
         return recent_channels(base, handle)
+    if mode == 'last_channel':
+        # Left or Right in Live TV with no banner (Skyline's silo_live_left/right): the
+        # channel watched before this one, as the OK screen's first.
+        return last_channel()
     if mode == 'play_channel':
         return play_channel(params.get('id'))
     if mode == 'play_catchup':
@@ -344,6 +348,17 @@ def recent_channels(base, handle):
         xbmcplugin.addDirectoryItem(handle, '%s?mode=play_channel&id=%d' % (base, channel['channelid']), item,
                                     isFolder=False)
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+def last_channel():
+    """The channel watched before the playing one, played (even one removed
+    from the OK screen's row: that only tidies the row)."""
+    before = channels.previous(tv_channels(), channels.last_watched(), playing_channel())
+    if not before:
+        kodi.notify('No other channel watched yet')
+        return
+    kodi.log('Live TV: back to %s' % before.get('label'))
+    kodi.jsonrpc('Player.Open', item={'channelid': before['channelid']})
 
 
 def play_channel(channel_id):

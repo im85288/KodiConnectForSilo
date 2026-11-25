@@ -129,3 +129,19 @@ def test_restart_offers_catch_up_channels_well_into_a_programme_recent_first():
     found[-1]['broadcastnow']['title'] = 'This is TNT Sports Ultimate'
     picked = plugin.restart_choices(found, {5: 2000, 1: 1000}, now)
     assert [c['channelid'] for c, *_ in picked] == [5, 1]
+
+
+def test_left_or_right_plays_the_channel_watched_before(monkeypatch):
+    from resources.lib.silokodi import kodi, plugin
+    opened, notes = [], []
+    monkeypatch.setattr(plugin, 'tv_channels', lambda: [{'channelid': 1, 'label': 'Sky News'},
+                                                        {'channelid': 2, 'label': 'CNN'}, {'channelid': 3, 'label': 'F1'}])
+    monkeypatch.setattr(plugin, 'playing_channel', lambda: 1)
+    monkeypatch.setattr(plugin.channels, 'last_watched', lambda: {1: 300, 2: 200, 3: 100})
+    monkeypatch.setattr(kodi, 'jsonrpc', lambda method, **kw: opened.append((method, kw)))
+    monkeypatch.setattr(kodi, 'notify', notes.append)
+    plugin.last_channel()
+    assert opened == [('Player.Open', {'item': {'channelid': 2}})]
+    monkeypatch.setattr(plugin, 'tv_channels', lambda: [{'channelid': 1, 'label': 'Sky News'}])
+    plugin.last_channel()
+    assert len(opened) == 1 and notes
