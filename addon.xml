@@ -45,8 +45,6 @@
 
 0.32.0: Live TV (Skyline 0.24.0): Left/Right with no banner go back to the channel watched before; catch-up shows its channel's logo in the player.
 
-0.31.0: Live TV (Skyline 0.23.0): the OK screen, the banner and Coming up next take the programme's colour, as the TV page; Kodi's banner as a channel starts stays hidden (browse or press Info to see it).
-
-0.30.0: TV page (Skyline 0.22.0): the backdrop takes the focused card's picture's colour, as Home; a card's backdrop is its own picture (not a team's photo of another sport); matches without a picture take one of the same sides; the playlist server's hidden groups (Peacock, Sky Sports+) have no row.</news>
+0.31.0: Live TV (Skyline 0.23.0): the OK screen, the banner and Coming up next take the programme's colour, as the TV page; Kodi's banner as a channel starts stays hidden (browse or press Info to see it).</news>
   </extension>
 </addon>
