@@ -522,6 +522,9 @@ class Service(object):
         if ticks % 60 == 0:
             self.remind_tv()
         self.publish_tv_title()  # the banner's picture as channels are browsed: each second
+        # The overlay's previous / next channel cards: what's on them changes on its own.
+        if ticks % 30 == 15 and (getattr(self, 'tv_playing', None) or ('', ''))[1]:
+            self.publish_neighbours(self.tv_playing[1])
         # The guide's restart row: each minute, and as the guide opens.
         guide_open = xbmc.getCondVisibility('Window.IsActive(tvguide)')
         if ticks % 60 == 7 or (guide_open and not getattr(self, 'guide_was_open', False)):
@@ -1410,6 +1413,14 @@ class Service(object):
         finally:
             self.tv_publishing = False
 
+    def publish_neighbours(self, channel):
+        """The overlay's previous and next channels (banner.publish_neighbours)."""
+        try:
+            from . import banner as banner_window
+            banner_window.publish_neighbours(channel)
+        except Exception as error:  # the buttons show no card
+            kodi.log_warning('TV overlay: neighbours: %s' % error)
+
     def publish_catchup_logo(self):
         """A programme playing from catch-up: its channel's logo for Skyline's
         player (tv.catchup_logo; Kodi's icon for it is the programme's picture),
@@ -1466,6 +1477,7 @@ class Service(object):
                 banner_window.publish_playing_next(channel)
             except Exception as error:  # the banner shows none
                 kodi.log_warning('TV banner: next: %s' % error)
+            self.publish_neighbours(channel)
             kodi.set_property('tv.banner_live', '1' if live else '')
         self.tv_watch_changed(channel)
         self.tick_live_prompts(channel)

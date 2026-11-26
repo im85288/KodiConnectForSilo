@@ -84,6 +84,32 @@ def publish_playing_next(name, now=None):
     publish_next('tv.', shows, on['start'] if on else now)
 
 
+NEIGHBOUR_KEYS = ('name', 'logo', 'title', 'picture', 'left', 'live')
+
+
+def publish_neighbours(name, found=None, now=None):
+    """Skyline's Live TV overlay: the channels its previous and next buttons
+    play (channels.neighbour, by number) and what's on them, as
+    tv.chprev.* and tv.chnext.* (NEIGHBOUR_KEYS), for the card it shows
+    above the selected button."""
+    import datetime
+    if found is None:
+        found = (kodi.jsonrpc('PVR.GetChannels', channelgroupid='alltv',
+                              properties=['channelnumber', 'icon', 'broadcastnow', 'hidden']) or {}).get('channels') or []
+    playing = next((c for c in found if name and c.get('label') == name), None)
+    moment = datetime.datetime.fromtimestamp(now or time.time(), datetime.timezone.utc)
+    for prefix, step in (('tv.chprev.', -1), ('tv.chnext.', 1)):
+        channel = channels.neighbour(found, playing.get('channelid'), step) if playing else None
+        on = (channel or {}).get('broadcastnow') or {}
+        stop = tvrows.broadcast_stop(on) if on else None
+        values = {'name': (channel or {}).get('label') or '', 'logo': (channel or {}).get('icon') or '',
+                  'title': tvrows.without_marks(on.get('title') or ''), 'picture': on.get('thumbnail') or '',
+                  'left': tvrows.left(stop, moment) if stop else '',
+                  'live': '1' if channels.is_live(on.get('genre')) else ''}
+        for key in NEIGHBOUR_KEYS:
+            kodi.set_property(prefix + key, values[key])
+
+
 def at(epoch, today):
     moment = time.localtime(epoch)
     clock = time.strftime('%H:%M', moment)

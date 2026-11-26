@@ -135,3 +135,21 @@ def test_previous_and_next_channel_go_by_number_and_wrap():
     assert channels.neighbour(found, 3, 1)['channelid'] == 1   # wraps round
     assert channels.neighbour(found, 1, -1)['channelid'] == 3
     assert channels.neighbour([{'channelid': 1, 'channelnumber': 1}], 1, 1) is None
+
+
+def test_the_overlay_cards_name_the_previous_and_next_channels(monkeypatch):
+    from resources.lib.silokodi import banner, kodi
+    props = {}
+    monkeypatch.setattr(kodi, 'set_property', lambda key, value: props.__setitem__(key, value))
+    found = [{'channelid': 1, 'channelnumber': 1, 'label': 'Main Event', 'icon': 'me.png',
+              'broadcastnow': {'title': 'NFL Bears @ Lions', 'thumbnail': 'nfl.jpg', 'genre': ['Live'],
+                               'endtime': '2026-11-26 21:15:00'}},
+             {'channelid': 2, 'channelnumber': 2, 'label': 'Premier League', 'icon': 'pl.png',
+              'broadcastnow': {'title': 'Netbusters', 'endtime': '2026-11-26 21:30:00'}},
+             {'channelid': 3, 'channelnumber': 21, 'label': 'TNT Sports 1', 'icon': 'tnt.png', 'broadcastnow': {}}]
+    banner.publish_neighbours('Premier League', found, now=1795727400)  # 2026-11-26 21:10 UTC
+    assert props['tv.chprev.name'] == 'Main Event' and props['tv.chprev.logo'] == 'me.png'
+    assert props['tv.chprev.title'] == 'NFL Bears @ Lions' and props['tv.chprev.picture'] == 'nfl.jpg'
+    assert props['tv.chprev.left'] and props['tv.chnext.name'] == 'TNT Sports 1' and props['tv.chnext.title'] == ''
+    banner.publish_neighbours('', found)
+    assert props['tv.chprev.name'] == '' and props['tv.chnext.name'] == ''
