@@ -71,7 +71,7 @@ def test_a_preview_isnt_watching(tmp_path, monkeypatch):
     assert channels.without_previews({7: 1100, 8: 1001}, channels.load_previews()) == {7: 1100}
 
 
-def test_restart_offers_catch_up_channels_well_into_a_programme_recent_first():
+def test_restart_offers_catch_up_programmes_to_their_end_and_the_one_just_ended_recent_first():
     from resources.lib.silokodi import plugin
     now = 1_800_000_000
     import time as _t
@@ -82,13 +82,23 @@ def test_restart_offers_catch_up_channels_well_into_a_programme_recent_first():
                 'broadcastnow': {'title': 'P%d' % cid, 'starttime': at(start), 'endtime': at(end)}}
     found = [channel(1, 1, True, now - 1800, now + 1800),     # in
              channel(2, 2, False, now - 1800, now + 1800),    # no catch-up
-             channel(3, 3, True, now - 60, now + 3600),       # only just begun
-             channel(4, 4, True, now - 3000, now + 300),      # nearly over
+             channel(3, 3, True, now - 60, now + 3600),       # only just begun: the one before instead
+             channel(4, 4, True, now - 3000, now + 300),      # nearly over: still in
              channel(5, 5, True, now - 900, now + 1800),      # in, watched more recently
-             channel(6, 6, True, now - 900, now + 1800)]      # filler: left out
-    found[-1]['broadcastnow']['title'] = 'This is TNT Sports Ultimate'
-    picked = plugin.restart_choices(found, {5: 2000, 1: 1000}, now)
-    assert [c['channelid'] for c, *_ in picked] == [5, 1]
+             channel(6, 6, True, now - 900, now + 1800),      # filler: left out
+             channel(7, 7, True, now - 120, now + 3600)]      # just begun, a gap before it: left out
+    found[5]['broadcastnow']['title'] = 'This is TNT Sports Ultimate'
+    asked = []
+
+    def earlier(chan, start):
+        asked.append(chan['channelid'])
+        if chan['channelid'] == 3:
+            return {'title': 'Before', 'starttime': at(start - 3600), 'endtime': at(start)}
+        return None
+    picked = plugin.restart_choices(found, {5: 2000, 1: 1000}, now, earlier)
+    assert [c['channelid'] for c, *_ in picked] == [5, 1, 3, 4]
+    assert picked[2][1]['title'] == 'Before' and picked[2][2] == now - 60 - 3600
+    assert sorted(asked) == [3, 7]  # only for programmes just begun
 
 
 def test_left_or_right_plays_the_channel_watched_before(monkeypatch):

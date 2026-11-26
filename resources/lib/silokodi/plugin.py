@@ -399,29 +399,46 @@ def forget_channel(channel_id):
 
 
 
-RESTART_AFTER = 5 * 60   # a programme this far in is worth restarting
-RESTART_LEFT = 10 * 60   # not when this little is left
+RESTART_AFTER = 5 * 60   # a programme this far in is worth restarting; before, the one just ended
 RESTART_CARDS = 12
 FILLER = re.compile(r'^This is |off ?air|no event', re.I)  # a part-time channel between events
 
 
-def restart_choices(found, watched, now):
+def restart_choices(found, watched, now, earlier=None):
     """Skyline's guide's "Restart what's on now", as Sky Stream's: the
-    programmes on now on catch-up channels, started RESTART_AFTER ago with
-    RESTART_LEFT to go; the channels watched most recently first, then by
-    number. [(channel, programme, its start and end epoch seconds)]."""
+    programmes on now on catch-up channels, to their end; in a programme's
+    first RESTART_AFTER, the one that just ended (earlier(channel, start):
+    the programme ending as it starts, or None), so the row stays full
+    around the hour, when most channels change programme at once. The
+    channels watched most recently first, then by number.
+    [(channel, programme, its start and end epoch seconds)]."""
     from .channels import utc_seconds
     out = []
     for channel in found:
         on = channel.get('broadcastnow') or {}
-        if channel.get('hidden') or not channel.get('hasarchive') or not on.get('starttime') or not on.get('endtime') \
-                or FILLER.search(on.get('title') or ''):
+        if channel.get('hidden') or not channel.get('hasarchive') or not on.get('starttime') or not on.get('endtime'):
             continue
         start, end = utc_seconds(on['starttime']), utc_seconds(on['endtime'])
-        if now - start >= RESTART_AFTER and end - now >= RESTART_LEFT:
-            out.append((channel, on, start, end))
+        if now - start < RESTART_AFTER:
+            on = earlier(channel, start) if earlier else None
+            if not on or not on.get('starttime') or not on.get('endtime'):
+                continue
+            start, end = utc_seconds(on['starttime']), utc_seconds(on['endtime'])
+        if FILLER.search(on.get('title') or ''):
+            continue
+        out.append((channel, on, start, end))
     out.sort(key=lambda c: (-watched.get(c[0].get('channelid'), 0), c[0].get('channelnumber') or 9999))
     return out[:RESTART_CARDS]
+
+
+def ended_before(channel, start):
+    """The channel's programme that ended as the one on now started (Kodi's
+    guide), for restart_choices; None if the guide has a gap there."""
+    from .channels import utc_seconds
+    broadcasts = (kodi.jsonrpc('PVR.GetBroadcasts', channelid=channel['channelid'],
+                               properties=['title', 'plot', 'thumbnail', 'genre', 'starttime', 'endtime']) or {}) \
+        .get('broadcasts') or []
+    return next((b for b in broadcasts if b.get('endtime') and abs(utc_seconds(b['endtime']) - start) <= 60), None)
 
 
 RESTART_FIELDS = ('title', 'started', 'thumb', 'logo', 'plot', 'minutes', 'length', 'quality', 'live', 'channelid', 'start')
@@ -436,7 +453,7 @@ def restart_cards(now=None):
     uhd = kodi.get_property('tv.uhd')  # tvrows.playlist_uhd's "|name|name|"
     cards = []
     for channel, on, start, end in restart_choices(tv_channels(CHANNEL_FIELDS + ['hasarchive']),
-                                                   channels.last_watched(), now):
+                                                   channels.last_watched(), now, ended_before):
         cards.append({'title': tvrows.without_marks(on.get('title') or ''),
                       'started': 'Started at %s' % time.strftime('%H:%M', time.localtime(start)),
                       'thumb': on.get('thumbnail') or '', 'logo': channel.get('icon') or '',
@@ -454,7 +471,7 @@ def restart_now(base, handle):
     import time
     from . import tvrows
     found = tv_channels(CHANNEL_FIELDS + ['hasarchive'])
-    for channel, on, start, end in restart_choices(found, channels.last_watched(), time.time()):
+    for channel, on, start, end in restart_choices(found, channels.last_watched(), time.time(), ended_before):
         title = tvrows.without_marks(on.get('title') or '')
         item = xbmcgui.ListItem(title, offscreen=True)
         picture = on.get('thumbnail') or ''
