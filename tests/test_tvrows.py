@@ -96,7 +96,7 @@ def test_each_guide_group_is_a_row_of_its_channels_by_number():
     # The playlist's group order; a group's channels by their number.
     assert [titles[k] for k in tvrows.GROUP_ROWS if k in titles] == [
         'Live | English Premier League - EPL', 'Live | EPL Teams', 'USA | Peacock Events', 'UK | Sky Sports',
-        'UK | TNT Sports']
+        'UK | TNT Sports', 'Live | Now HK Sports']  # six rows: all six groups fit
     sky = rows[titles and [k for k, t in titles.items() if t == 'UK | Sky Sports'][0]]
     assert [c['card.title'] for c in sky] == ['Sky Sports Main Event', 'Sky Sports Premier League']
     assert sky[0]['card.sub'] == 'Darts' and sky[0]['left'] == '30 min left'

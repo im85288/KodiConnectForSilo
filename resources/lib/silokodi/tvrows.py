@@ -27,7 +27,7 @@ from . import fileio, kodi
 TEAMS_ROW, RECENT_ROW, CATCHUP_ROW, UPCOMING_ROW = 'teams', 'recent', 'catchup', 'upcoming'
 # The guide's groups (the playlist's group-title), each a row of its channels,
 # in the playlist's order: their titles are the groups' names (group_titles).
-GROUP_ROWS = tuple('group%d' % n for n in range(1, 6))
+GROUP_ROWS = tuple('group%d' % n for n in range(1, 7))  # Skyline's TV page has as many (PAGE_ROWS)
 # Recent channels first, as Sky Stream's home; My teams last: it's often a
 # fixture days off (the user's order).
 ROWS = ((RECENT_ROW, 'Recent channels'),) + tuple((key, '') for key in GROUP_ROWS) + \
