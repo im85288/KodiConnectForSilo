@@ -400,7 +400,7 @@ def forget_channel(channel_id):
 
 
 RESTART_AFTER = 5 * 60   # a programme this far in is worth restarting; before, the one just ended
-RESTART_CARDS = 12
+RESTART_CARDS = 24  # Skyline 0.28.0+ has as many places (RAIL_CARDS)
 FILLER = re.compile(r'^This is |off ?air|no event', re.I)  # a part-time channel between events
 
 
