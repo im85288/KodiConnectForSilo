@@ -202,6 +202,11 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.36.0 (2026-11-26)
+- **Restart what's on now:** up to 24 cards (`RESTART_CARDS`), for Skyline 0.28.0's 24 places: with Premier Sports
+  and Freeview in the guide about 20 programmes qualify, and the 12 places went to Sky Sports and TNT.
+- **TV page:** six guide group rows (`GROUP_ROWS`), so the Match day group still has a row on a match day.
+
 ### v0.35.1 (2026-11-26)
 - **Stopping:** the service's timers (picture sizes, Live TV banner, trailer cover) go through `later()` and are
   cancelled first as it stops: Kodi waits for every thread of an add-on and kills it after 5 s, so a restart soon
