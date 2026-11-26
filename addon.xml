@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.35.0" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.35.1" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.35.0: Live TV (Skyline 0.27.0): OK shows what's on with the playback buttons; Left/Right open the recent channels with the one watched before selected (OK watches it); the TV page's Recent channels includes the channel you're watching; the guide's Restart row stays full around the hour (a programme stays to its end; just after it, the one that just ended).
+    <news>0.35.1: Kodi restarts and updates no longer wait 30 s on this add-on: its service stops within Kodi's 5 s (waiting timers are cancelled).
+
+0.35.0: Live TV (Skyline 0.27.0): OK shows what's on with the playback buttons; Left/Right open the recent channels with the one watched before selected (OK watches it); the TV page's Recent channels includes the channel you're watching; the guide's Restart row stays full around the hour (a programme stays to its end; just after it, the one that just ended).
 
 0.34.0: TV page (Skyline 0.26.0): live and upcoming matches carry Sky's LIVE / UPCOMING tags, upcoming ones show just the time; Remove from recent channels on the TV page works again.
 

@@ -202,6 +202,11 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.35.1 (2026-11-26)
+- **Stopping:** the service's timers (picture sizes, Live TV banner, trailer cover) go through `later()` and are
+  cancelled first as it stops: Kodi waits for every thread of an add-on and kills it after 5 s, so a restart soon
+  after the service started (an update) ended with Kodi's 30 s shutdown watchdog. Stopping logs each step's time.
+
 ### v0.35.0 (2026-11-26)
 - **Recent channels:** the TV page's row includes the channel being watched; Skyline's Left/Right row reloads after
   any switch from it (`recent_reload`, shared by `last_channel` and `play_channel`).
