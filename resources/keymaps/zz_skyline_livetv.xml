@@ -10,8 +10,8 @@
                   numbers). Kodi's Down / Up actions: with Kodi's "Confirm channel
                   switch" on (its default) they browse channels in the banner and OK
                   watches the one shown, as Sky's mini guide; off, they switch at once
-       Left/Right while watching, the channel watched before, with the recent channels
-                  row (Skyline's window 1196); held, 5 minutes back
+       Left/Right while watching, the recent channels row (Skyline's window 1196), the
+                  channel watched before selected (OK watches it); held, 5 minutes back
                   or on. With the banner up (Info or browsing), as Sky Stream's: the
                   programme before (catch-up) or after on its channel; OK plays an
                   earlier one or sets a later one's reminder. They set silo.live.step

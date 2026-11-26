@@ -125,8 +125,9 @@ the same properties.
   Kodi's own **Settings -> Player -> Videos -> Dolby Vision compatibility mode**, which converts profile 7
   (UHD Blu-ray remuxes) to 8.1. Without the profile 7 option Silo strips such files to HDR10 in a converted
   4K stream, which the SHIELD can't hardware-decode in Kodi; the add-on refuses those with a message.
-- **Playback -> Live TV keys** (with Skyline): OK the recent channels, Up/Down browse channels, Left/Right the
-  channel watched before (with the banner up, its earlier and later programmes).
+- **Playback -> Live TV keys** (with Skyline): OK what's on with the playback buttons, Up/Down browse channels,
+  Left/Right the recent channels with the one watched before selected (with the banner up, its earlier and later
+  programmes).
 - **Playback -> My teams** (with Skyline's TV page): your teams, comma separated (`Newcastle United, Newcastle
   Utd`): every name a guide may use for a team.
 - **Playback -> Live sport groups** (with Skyline's TV page): a tick list of your playlist's groups for Live

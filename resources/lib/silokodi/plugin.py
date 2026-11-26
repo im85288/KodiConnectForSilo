@@ -350,11 +350,16 @@ def last_channel():
         return
     kodi.log('Live TV: back to %s' % before.get('label'))
     kodi.jsonrpc('Player.Open', item={'channelid': before['channelid']})
-    # Skyline's recent channels row opens with the switch: once it's playing,
-    # reload it, so the channel just left is first (it listed the one left now).
+    recent_reload(before['channelid'])
+
+
+def recent_reload(channel_id):
+    """Once the channel switched to is playing, have Skyline reload its recent
+    channels row (silokodi.recent_changed in its path), so the next Left/Right
+    lists the channel just left first."""
     monitor = xbmc.Monitor()
     for _ in range(40):
-        if playing_channel() == before['channelid'] or monitor.waitForAbort(0.25):
+        if playing_channel() == channel_id or monitor.waitForAbort(0.25):
             break
     kodi.set_property('recent_changed', str(int(time.time())))
 
@@ -367,6 +372,7 @@ def play_channel(channel_id):
         xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
         return
     kodi.jsonrpc('Player.Open', item={'channelid': int(channel_id)})
+    recent_reload(int(channel_id))
 
 
 def tv_remind(start, ids, title):
