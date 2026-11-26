@@ -202,6 +202,14 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.35.0 (2026-11-26)
+- **Recent channels:** the TV page's row includes the channel being watched; Skyline's Left/Right row reloads after
+  any switch from it (`recent_reload`, shared by `last_channel` and `play_channel`).
+- **Live TV keys:** OK opens Skyline's OK screen (window 1198: what's on and the playback buttons); Left/Right open
+  the recent channels row (1196) with the channel watched before selected, without switching.
+- **Restart what's on now:** a programme stays to its end (no 10 minutes left rule); in a programme's first
+  5 minutes the row offers the one that just ended (`ended_before`), so it stays full around the hour.
+
 ### v0.34.0 (2026-11-25)
 - **LIVE / UPCOMING:** match cards carry `tv.tag` (LIVE while on, UPCOMING before), fixture cards UPCOMING, for
   Skyline's tags; an upcoming card's text is the time alone (no channel count).
