@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.36.0" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.37.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.36.0: Live TV (Skyline 0.28.0): the guide's Restart row holds up to 24 programmes, so every channel's fits; the TV page has room for six guide groups, so the Match day row still shows with Premier Sports and Freeview.
+    <news>0.37.0: for Skyline 0.29.0's YouTube-style Live TV overlay: its On now and Coming up rows, previous / next channel, and the card showing which channel those buttons go to.
+
+0.36.0: Live TV (Skyline 0.28.0): the guide's Restart row holds up to 24 programmes, so every channel's fits; the TV page has room for six guide groups, so the Match day row still shows with Premier Sports and Freeview.
 
 0.35.1: Kodi restarts and updates no longer wait 30 s on this add-on: its service stops within Kodi's 5 s (waiting timers are cancelled).
 
@@ -45,8 +47,6 @@
 
 0.33.1: Live TV: a long OK while browsing channels (even after Back hid the banner) opens the TV guide instead of playing the browsed channel; after Back, OK opens the recent channels.
 
-0.33.0: tidy-up for Skyline 0.25.0: the Live TV quick guide's code is gone (the TV guide replaces it); one less background task.
-
-0.32.0: Live TV (Skyline 0.24.0): Left/Right with no banner go back to the channel watched before; catch-up shows its channel's logo in the player.</news>
+0.33.0: tidy-up for Skyline 0.25.0: the Live TV quick guide's code is gone (the TV guide replaces it); one less background task.</news>
   </extension>
 </addon>

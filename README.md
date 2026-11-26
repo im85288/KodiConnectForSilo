@@ -202,6 +202,13 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.37.0 (2026-11-26)
+- **Live TV overlay** (Skyline 0.29.0): `on_now_channels` (every other channel and what's on, by number),
+  `next_on` (the playing channel's next programmes; OK sets a reminder) and `channel_step` (the channel before or
+  after by number, wrapping); the recent row's card is shared as `channel_item`.
+- **Previous / next channel card:** `banner.publish_neighbours` publishes `tv.chprev.*` and `tv.chnext.*` (name,
+  logo, what's on, picture, time left, live) as the channel or programme changes and every 30 s.
+
 ### v0.36.0 (2026-11-26)
 - **Restart what's on now:** up to 24 cards (`RESTART_CARDS`), for Skyline 0.28.0's 24 places: with Premier Sports
   and Freeview in the guide about 20 programmes qualify, and the 12 places went to Sky Sports and TNT.
