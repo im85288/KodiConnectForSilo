@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Silo Skyline: Live TV keys as TiviMate's. Copy to userdata/keymaps/ (named to
      load after other keymaps, which it overrides only for these keys):
-       OK         the recently watched channels (Skyline's window 1196)
+       OK         what's on and the playback buttons (Skyline's window 1198)
        Long OK    the TV guide (Sky has it and the banner, which Left/Right/Up/Down
                   drive); on the OK screen, its channel's menu (Remove from recent
                   channels). It sets silo.live.longok; Skyline's timer decides, as
@@ -10,7 +10,8 @@
                   numbers). Kodi's Down / Up actions: with Kodi's "Confirm channel
                   switch" on (its default) they browse channels in the banner and OK
                   watches the one shown, as Sky's mini guide; off, they switch at once
-       Left/Right while watching, the channel watched before; held, 5 minutes back
+       Left/Right while watching, the channel watched before, with the recent channels
+                  row (Skyline's window 1196); held, 5 minutes back
                   or on. With the banner up (Info or browsing), as Sky Stream's: the
                   programme before (catch-up) or after on its channel; OK plays an
                   earlier one or sets a later one's reminder. They set silo.live.step
@@ -18,8 +19,8 @@
 <keymap>
   <FullscreenLiveTV>
     <keyboard>
-      <return>ActivateWindow(1196)</return>
-      <enter>ActivateWindow(1196)</enter>
+      <return>ActivateWindow(1198)</return>
+      <enter>ActivateWindow(1198)</enter>
       <return mod="longpress">SetProperty(silo.live.longok,1,home)</return>
       <enter mod="longpress">SetProperty(silo.live.longok,1,home)</enter>
       <up>Down</up>
@@ -30,7 +31,7 @@
       <right mod="longpress">SetProperty(silo.live.step,2,home)</right>
     </keyboard>
     <remote>
-      <select>ActivateWindow(1196)</select>
+      <select>ActivateWindow(1198)</select>
       <select mod="longpress">SetProperty(silo.live.longok,1,home)</select>
       <up>Down</up>
       <down>Up</down>
@@ -43,18 +44,18 @@
   <!-- While browsing channels (Kodi's channel preview), Kodi looks keys up here
        first: its own section maps OK to Select (watch the one shown), and a long
        OK, unmapped, fell back to that, playing the browsed channel instead of
-       opening the guide. Here OK goes through the OK screen (window 1196), which
+       opening the guide. Here OK goes through the OK screen (window 1198), which
        watches the one shown, or opens as usual once Back has hidden the banner;
        long OK the TV guide, as when not browsing. -->
   <FullscreenLiveTvPreview>
     <keyboard>
-      <return>ActivateWindow(1196)</return>
-      <enter>ActivateWindow(1196)</enter>
+      <return>ActivateWindow(1198)</return>
+      <enter>ActivateWindow(1198)</enter>
       <return mod="longpress">SetProperty(silo.live.longok,1,home)</return>
       <enter mod="longpress">SetProperty(silo.live.longok,1,home)</enter>
     </keyboard>
     <remote>
-      <select>ActivateWindow(1196)</select>
+      <select>ActivateWindow(1198)</select>
       <select mod="longpress">SetProperty(silo.live.longok,1,home)</select>
     </remote>
   </FullscreenLiveTvPreview>

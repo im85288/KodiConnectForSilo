@@ -350,6 +350,13 @@ def last_channel():
         return
     kodi.log('Live TV: back to %s' % before.get('label'))
     kodi.jsonrpc('Player.Open', item={'channelid': before['channelid']})
+    # Skyline's recent channels row opens with the switch: once it's playing,
+    # reload it, so the channel just left is first (it listed the one left now).
+    monitor = xbmc.Monitor()
+    for _ in range(40):
+        if playing_channel() == before['channelid'] or monitor.waitForAbort(0.25):
+            break
+    kodi.set_property('recent_changed', str(int(time.time())))
 
 
 def play_channel(channel_id):
