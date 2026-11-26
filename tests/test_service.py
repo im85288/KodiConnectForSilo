@@ -210,6 +210,7 @@ def test_stopping_frees_the_relay_port_even_when_a_step_fails(logged):
     service.shut_down(worker)
     assert time.time() - started < 5  # inside the time Kodi allows
     assert done == ['events', 'playback', 'database']
+    assert ('log_warning', "Stopping (timers): 'Service' object has no attribute 'timers_lock'") in logged
     assert ('log_warning', "Stopping (details): Unknown addon id 'plugin.video.kodiconnectforsilo'.") in logged
     again = socket.socket()
     try:
@@ -368,3 +369,17 @@ def test_on_now_is_rebuilt_after_a_channel_is_watched_not_previewed(monkeypatch)
     fullscreen.clear()
     service.tv_watch_changed('', now=140)  # stopped
     assert service.tv_rows_due == 140 + service_module.TV_WATCHED_WAIT
+
+
+def test_stopping_cancels_timers_still_waiting():
+    # Kodi waits for every thread of the add-on as it stops and kills it after
+    # 5 s: a restart within 20 s of starting waited on the picture sizes' timer.
+    service = bare_service()
+    service.timers, service.timers_lock = [], threading.Lock()
+    ran = []
+    timer = service.later(30, ran.append, 'late')
+    quick = service.later(0, ran.append, 'now')
+    quick.join(2)
+    service.cancel_timers()
+    timer.join(2)
+    assert not timer.is_alive() and ran == ['now'] and service.timers == []

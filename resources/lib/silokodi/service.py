@@ -143,7 +143,7 @@ class Player(xbmc.Player):
             kodi.set_property('live.switched', '1')
             stamp = time.time()
             self.switched_at = stamp
-            threading.Timer(SWITCHED_FOR, self.end_switched, args=(stamp,)).start()
+            self.service.later(SWITCHED_FOR, self.end_switched, stamp)
 
     def end_switched(self, stamp):
         """Skyline never saw Kodi's banner for that start (Display channel info
@@ -228,9 +228,7 @@ class Player(xbmc.Player):
             kind, _, dbid = trailer_from.partition('|')
             xbmc.executebuiltin('RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=info&type=%s&dbid=%s)'
                                 % (kind, dbid))
-            timer = threading.Timer(TRAILER_COVER_MAX, kodi.clear_property, ['trailer_playing'])
-            timer.daemon = True
-            timer.start()
+            self.service.later(TRAILER_COVER_MAX, kodi.clear_property, 'trailer_playing')
         session = self.service.playback.on_stopped(self.last_time)
         if session:
             self.service.recently_played[session.content_id] = time.time()
@@ -346,6 +344,10 @@ class Service(object):
         self.tick_error = ('', 0)  # the main loop's last error, and when it was logged
         self.use_art_widths(xbmcgui.getScreenWidth())
         self.listener = None
+        # Timers still waiting (later()): cancelled as the service stops, as
+        # Kodi waits for every thread of the add-on and kills it after 5 s
+        # (a restart within 20 s of starting waited on the picture sizes' timer).
+        self.timers, self.timers_lock = [], threading.Lock()
         self.recently_played = {}
         self.subtitle_pick = None  # (stored subtitle id, position) to apply when Search online's restart starts
         self.art_attempts = {}
@@ -438,9 +440,7 @@ class Service(object):
         except Exception as error:  # never let it stop the service starting
             kodi.log_warning('Could not read the screensaver and spoiler settings: %s' % error)
         # Kodi's picture sizes for the menus' size (bigart): asked once Home has settled.
-        sizes = threading.Timer(BIG_ART_DELAY, self.check_big_art)
-        sizes.daemon = True
-        sizes.start()
+        self.later(BIG_ART_DELAY, self.check_big_art)
         worker = threading.Thread(target=self.work, name='silokodi-worker')
         worker.daemon = True
         worker.start()
@@ -467,18 +467,41 @@ class Service(object):
         then can't listen, so artwork stops loading. One failing step must
         not skip the rest: saving the details once failed, and the relay
         was never closed."""
-        steps = (('relay', self.relay.stop),
+        steps = (('timers', self.cancel_timers),
+                 ('relay', self.relay.stop),
                  ('events', self.stop_listener),
                  ('details', self.save_details),
                  ('playback', lambda: self.playback.on_stopped(self.player.last_time)),
                  ('worker', lambda: (self.tasks.put((-1, next(self.task_number), None)),
                                      worker.join(WORKER_STOP_WAIT))),
                  ('database', self.db.close))
+        began, taken = time.time(), []
         for name, step in steps:
+            started = time.time()
             try:
                 step()
             except Exception as error:  # the next step still runs
                 kodi.log_warning('Stopping (%s): %s' % (name, error))
+            taken.append('%s %.2f s' % (name, time.time() - started))
+        kodi.log('Stopped in %.2f s (%s); threads left: %s' % (
+            time.time() - began, ', '.join(taken),
+            ', '.join(sorted(t.name for t in threading.enumerate() if t is not threading.current_thread())) or 'none'))
+
+    def later(self, delay, func, *args):
+        """func(*args) on its own thread in delay seconds, unless the
+        service stops first (cancel_timers)."""
+        timer = threading.Timer(delay, func, args)
+        timer.daemon = True
+        with self.timers_lock:
+            self.timers = [t for t in self.timers if t.is_alive()] + [timer]
+        timer.start()
+        return timer
+
+    def cancel_timers(self):
+        with self.timers_lock:
+            timers, self.timers = self.timers, []
+        for timer in timers:
+            timer.cancel()
 
     def ask_about_display(self, ticks):
         """Once, for someone signed in before sign-in asked what the TV
@@ -775,9 +798,7 @@ class Service(object):
             kind, _, dbid = trailer_from.partition('|')
             xbmc.executebuiltin('RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=info&type=%s&dbid=%s)'
                                 % (kind, dbid))
-        timer = threading.Timer(TRAILER_COVER_MAX, kodi.clear_property, ['trailer_playing'])
-        timer.daemon = True
-        timer.start()
+        self.later(TRAILER_COVER_MAX, kodi.clear_property, 'trailer_playing')
 
     def wait_while_playing(self):
         """Pause a running sync while a video plays (it resumes afterwards)."""
