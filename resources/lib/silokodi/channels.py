@@ -34,6 +34,23 @@ def previous(channels, watched, playing=None):
     return seen[0] if seen else None
 
 
+def on_now(channels, playing=None):
+    """Every channel shown in the guide but the playing one, by number."""
+    shown = [c for c in channels if not c.get('hidden') and c.get('channelid') != playing]
+    return sorted(shown, key=lambda c: (c.get('channelnumber') or 10 ** 6, c.get('label') or ''))
+
+
+def neighbour(channels, playing, step):
+    """The channel step (1 or -1) along the guide's numbers from the playing
+    one, wrapping round at the ends; None if there's no other."""
+    shown = sorted((c for c in channels if not c.get('hidden')),
+                   key=lambda c: (c.get('channelnumber') or 10 ** 6, c.get('label') or ''))
+    ids = [c.get('channelid') for c in shown]
+    if len(shown) < 2 or playing not in ids:
+        return shown[0] if shown and playing not in ids else None
+    return shown[(ids.index(playing) + step) % len(shown)]
+
+
 def last_watched():
     """{channel id: when last watched}: Kodi's, but a channel that only
     played as Skyline's TV page preview keeps its time from before."""

@@ -130,6 +130,12 @@ def run(argv):
         return restart_now(base, handle)
     if mode == 'recent_channels':
         return recent_channels(base, handle)
+    if mode == 'on_now_channels':
+        return on_now_channels(base, handle)
+    if mode == 'next_on':
+        return next_on(base, handle)
+    if mode == 'channel_step':
+        return channel_step(-1 if params.get('dir') == '-1' else 1)
     if mode == 'last_channel':
         # Left or Right in Live TV with no banner (Skyline's silo_live_left/right): the
         # channel watched before this one, as the OK screen's first.
@@ -315,30 +321,79 @@ def playing_channel():
     return None
 
 
-def recent_channels(base, handle):
-    """Live TV's recently watched channels for a Silo-style skin's row, as
-    TiviMate's: newest first, not the playing one, none the viewer removed.
-    silo.* properties carry what Kodi gives only to its own channel items."""
-    for channel in channels.recent(tv_channels(), channels.last_watched(), playing_channel(), channels.load_removed()):
-        now = channel.get('broadcastnow') or {}
-        item = xbmcgui.ListItem(channel.get('label') or '', offscreen=True)
-        item.setArt({'icon': channel.get('icon') or '', 'thumb': channel.get('icon') or ''})
-        import datetime
-        from . import tvrows
-        stop = tvrows.broadcast_stop(now)
-        item.setProperties({'silo.channelid': str(channel['channelid']), 'silo.channel': channel.get('label') or '',
-                            'silo.number': str(channel.get('channelnumber') or ''),
-                            'silo.now': now.get('title') or '',
-                            'silo.progress': str(int(now.get('progresspercentage') or 0)),
-                            # As the TV page's cards: the programme's picture, its time left, live.
-                            'silo.picture': now.get('thumbnail') or '',
-                            'silo.left': tvrows.left(stop, datetime.datetime.now(datetime.timezone.utc)) if stop else '',
-                            'silo.live': '1' if channels.is_live(now.get('genre')) else ''})
+def channel_item(base, channel, menu=False):
+    """A channel as Skyline's Live TV cards show it: what's on, its picture,
+    progress, time left and LIVE. silo.* properties carry what Kodi gives
+    only to its own channel items."""
+    import datetime
+    from . import tvrows
+    now = channel.get('broadcastnow') or {}
+    item = xbmcgui.ListItem(channel.get('label') or '', offscreen=True)
+    item.setArt({'icon': channel.get('icon') or '', 'thumb': channel.get('icon') or ''})
+    stop = tvrows.broadcast_stop(now)
+    item.setProperties({'silo.channelid': str(channel['channelid']), 'silo.channel': channel.get('label') or '',
+                        'silo.number': str(channel.get('channelnumber') or ''),
+                        'silo.now': now.get('title') or '',
+                        'silo.progress': str(int(now.get('progresspercentage') or 0)),
+                        # As the TV page's cards: the programme's picture, its time left, live.
+                        'silo.picture': now.get('thumbnail') or '',
+                        'silo.left': tvrows.left(stop, datetime.datetime.now(datetime.timezone.utc)) if stop else '',
+                        'silo.live': '1' if channels.is_live(now.get('genre')) else ''})
+    if menu:
         item.addContextMenuItems([(kodi.string(30168), 'RunPlugin(%s?mode=forget_channel&id=%d)'
                                    % (base, channel['channelid']))])
-        xbmcplugin.addDirectoryItem(handle, '%s?mode=play_channel&id=%d' % (base, channel['channelid']), item,
-                                    isFolder=False)
+    return item
+
+
+def recent_channels(base, handle):
+    """Live TV's recently watched channels for a Silo-style skin's row, as
+    TiviMate's: newest first, not the playing one, none the viewer removed."""
+    for channel in channels.recent(tv_channels(), channels.last_watched(), playing_channel(), channels.load_removed()):
+        xbmcplugin.addDirectoryItem(handle, '%s?mode=play_channel&id=%d' % (base, channel['channelid']),
+                                    channel_item(base, channel, menu=True), isFolder=False)
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+def on_now_channels(base, handle):
+    """Skyline's Live TV overlay, On now: every other channel and what's on, by number."""
+    for channel in channels.on_now(tv_channels(), playing_channel()):
+        xbmcplugin.addDirectoryItem(handle, '%s?mode=play_channel&id=%d' % (base, channel['channelid']),
+                                    channel_item(base, channel), isFolder=False)
+    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+NEXT_ON = 10  # programmes in the overlay's Next on row
+
+
+def next_on(base, handle):
+    """Skyline's Live TV overlay, Next on <channel>: the playing channel's
+    programmes after the one on now; OK sets or removes a reminder (tv_remind)."""
+    from urllib.parse import quote
+    from . import banner, tvrows
+    playing = playing_channel()
+    channel = next((c for c in tv_channels() if c.get('channelid') == playing), None)
+    if channel:
+        now = time.time()
+        for show in banner.following(banner.broadcasts(channel, now), now, NEXT_ON):
+            title = tvrows.without_marks(show.get('title') or '')
+            item = xbmcgui.ListItem(title, offscreen=True)
+            item.setArt({'icon': channel.get('icon') or '', 'thumb': show.get('thumbnail') or channel.get('icon') or ''})
+            item.setProperties({'silo.channelid': str(playing), 'silo.channel': channel.get('label') or '',
+                                'silo.now': '%s  %s' % (time.strftime('%H:%M', time.localtime(show['start'])), title),
+                                # Not LIVE: it hasn't started (the card's time says when).
+                                'silo.picture': show.get('thumbnail') or '', 'silo.progress': '0', 'silo.live': ''})
+            xbmcplugin.addDirectoryItem(handle, '%s?mode=tv_remind&start=%d&ids=%d&title=%s'
+                                        % (base, show['start'], playing, quote(title)), item, isFolder=False)
+    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+def channel_step(step):
+    """The overlay's previous / next channel buttons: the channel before or
+    after the playing one by number."""
+    found = channels.neighbour(tv_channels(), playing_channel(), step)
+    if found:
+        kodi.jsonrpc('Player.Open', item={'channelid': found['channelid']})
+        recent_reload(found['channelid'])
 
 
 def last_channel():

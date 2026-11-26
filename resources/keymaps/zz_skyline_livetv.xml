@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Silo Skyline: Live TV keys as TiviMate's. Copy to userdata/keymaps/ (named to
      load after other keymaps, which it overrides only for these keys):
-       OK         what's on and the playback buttons (Skyline's window 1198)
+       OK         Skyline's Live TV overlay (window 1198, as YouTube's player): what's on,
+                  the bar, the buttons, and Recent / On now / Coming up rows
        Long OK    the TV guide (Sky has it and the banner, which Left/Right/Up/Down
                   drive); on the OK screen, its channel's menu (Remove from recent
                   channels). It sets silo.live.longok; Skyline's timer decides, as
@@ -10,8 +11,8 @@
                   numbers). Kodi's Down / Up actions: with Kodi's "Confirm channel
                   switch" on (its default) they browse channels in the banner and OK
                   watches the one shown, as Sky's mini guide; off, they switch at once
-       Left/Right while watching, the recent channels row (Skyline's window 1196), the
-                  channel watched before selected (OK watches it); held, 5 minutes back
+       Left/Right while watching, the overlay on its Recent row, the channel
+                  watched before selected (OK watches it); held, 5 minutes back
                   or on. With the banner up (Info or browsing), as Sky Stream's: the
                   programme before (catch-up) or after on its channel; OK plays an
                   earlier one or sets a later one's reminder. They set silo.live.step

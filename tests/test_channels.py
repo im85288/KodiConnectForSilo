@@ -115,3 +115,23 @@ def test_left_or_right_plays_the_channel_watched_before(monkeypatch):
     monkeypatch.setattr(plugin, 'tv_channels', lambda: [{'channelid': 1, 'label': 'Sky News'}])
     plugin.last_channel()
     assert len(opened) == 1 and notes
+
+
+def test_on_now_is_every_other_shown_channel_by_number():
+    from resources.lib.silokodi import channels
+    found = [{'channelid': 3, 'channelnumber': 21, 'label': 'TNT Sports 1'},
+             {'channelid': 1, 'channelnumber': 1, 'label': 'Main Event'},
+             {'channelid': 2, 'channelnumber': 2, 'label': 'Premier League'},
+             {'channelid': 4, 'channelnumber': 3, 'label': 'Hidden', 'hidden': True}]
+    assert [c['channelid'] for c in channels.on_now(found, playing=2)] == [1, 3]
+
+
+def test_previous_and_next_channel_go_by_number_and_wrap():
+    from resources.lib.silokodi import channels
+    found = [{'channelid': 3, 'channelnumber': 21}, {'channelid': 1, 'channelnumber': 1},
+             {'channelid': 2, 'channelnumber': 2}, {'channelid': 4, 'channelnumber': 3, 'hidden': True}]
+    assert channels.neighbour(found, 2, 1)['channelid'] == 3   # 2 -> 21 (3 is hidden)
+    assert channels.neighbour(found, 2, -1)['channelid'] == 1
+    assert channels.neighbour(found, 3, 1)['channelid'] == 1   # wraps round
+    assert channels.neighbour(found, 1, -1)['channelid'] == 3
+    assert channels.neighbour([{'channelid': 1, 'channelnumber': 1}], 1, 1) is None
