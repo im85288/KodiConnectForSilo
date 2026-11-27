@@ -202,6 +202,12 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.38.0 (2026-11-27)
+- **Mini TV guide** (Skyline 0.31.0, Right in Live TV): `plugin.mini_cards` builds every channel by number from the
+  playing one (`channels.from_playing`), with what's on, when it started, progress, LIVE, what's next and HD / UHD;
+  the service publishes them as `silokodi.mini.N.*` with the previous / next channels (on a change and every 30 s),
+  so the panel opens with them. A channel with nothing on shows its name.
+
 ### v0.37.0 (2026-11-26)
 - **Live TV overlay** (Skyline 0.29.0): `on_now_channels` (every other channel and what's on, by number),
   `next_on` (the playing channel's next programmes; OK sets a reminder) and `channel_step` (the channel before or
