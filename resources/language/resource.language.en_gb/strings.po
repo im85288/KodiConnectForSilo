@@ -625,3 +625,15 @@ msgstr ""
 msgctxt "#30259"
 msgid "100%"
 msgstr ""
+
+msgctxt "#30260"
+msgid "Paused for a while: picking up where you left off"
+msgstr ""
+
+msgctxt "#30261"
+msgid "Show Silo's notices"
+msgstr ""
+
+msgctxt "#30262"
+msgid "A notice when an episode becomes your Next Up, or a request or watchlist title arrives in the library."
+msgstr ""

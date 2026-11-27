@@ -11,13 +11,14 @@ import queue
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlencode
 
 import requests
 import xbmc
 import xbmcgui
 
 from . import catchup, jump, kodi, kodidb, mapping, migrate, tracks, upnext, keymap
-from . import bigart, channels, commands, display, liveprompts, playeraudio, playersubs, skinoptions, theme, tvrows
+from . import bigart, channels, commands, display, liveprompts, notices, playeraudio, playersubs, skinoptions, theme, tvrows
 from .theme import ThemePlayer
 from . import api
 from .api import ApiError, SignedOut, SiloClient
@@ -28,7 +29,7 @@ from .store import Store
 from . import rows as home_cards
 from .library import DetailsCache
 from .personal import PersonalLists
-from .sync import FETCH_WORKERS, MAX_ROWS, MOVIE_LIBRARY_TYPES, NEXT_EPISODE_SECTIONS, SHOW_LIBRARY_TYPES, Stopped, Syncer, collection_cards, home_row_items, page_of, skin_layout
+from .sync import FETCH_WORKERS, MAX_ROWS, MOVIE_LIBRARY_TYPES, NEXT_EPISODE_SECTIONS, SHOW_LIBRARY_TYPES, Stopped, Syncer, also_in_cards, collection_cards, home_row_items, page_of, skin_layout
 from .syncdb import SyncDB
 
 UNPAUSE_MIN = 5  # seconds paused before unpausing rewinds (unpause_back): a quick pause doesn't
@@ -326,7 +327,8 @@ class Service(object):
                            media_allowed=self.media_allowed)
         self.playback = PlaybackManager(self.client, self.version, self.playback_settings, log=kodi.log,
                                         media_url=self.relay.media_url,
-                                        ledger=os.path.join(kodi.profile_dir(), 'open_sessions.json'))
+                                        ledger=os.path.join(kodi.profile_dir(), 'open_sessions.json'),
+                                        restart=self.restart_playback)
         self.player = Player(self)
         # On in the add-on's settings and, under Skyline, its own skin setting (off: SkylineNoThemeMusic).
         self.theme = ThemePlayer(lambda: kodi.setting_bool('theme_music')
@@ -349,6 +351,7 @@ class Service(object):
         # (a restart within 20 s of starting waited on the picture sizes' timer).
         self.timers, self.timers_lock = [], threading.Lock()
         self.recently_played = {}
+        self.notices_shown = set()  # Silo notification ids already shown (show_notice)
         self.subtitle_pick = None  # (stored subtitle id, position) to apply when Search online's restart starts
         self.art_attempts = {}
         # Home-row cards whose picture the relay turned away (series_art):
@@ -913,6 +916,25 @@ class Service(object):
             content_id = data.get('content_id') or data.get('series_id')
             if content_id:
                 self.enqueue(('state', content_id))
+        elif channel == 'notifications' and event == 'notification.created':
+            self.show_notice(data)
+
+    def show_notice(self, data):
+        """A Silo notification as a Kodi notice (notices.py), with the title's poster."""
+        if not kodi.setting_bool('silo_notices'):
+            return
+        if data.get('profile_id') and data['profile_id'] != self.store.get('profile_id'):
+            return
+        if data.get('read_at') or data.get('id') in self.notices_shown:
+            return
+        shown = notices.text(data)
+        if not shown:
+            return
+        self.notices_shown.add(data.get('id'))
+        content_id = notices.picture_id(data)
+        icon = mapping.art_url(self.port, content_id, 'poster') if content_id else kodi.addon().getAddonInfo('icon')
+        xbmcgui.Dialog().notification(shown[0], shown[1], icon, notices.SHOW_FOR)
+        kodi.log('Silo notice: %s (%s)' % (shown[0], data.get('type')))
 
     # ----- Up Next -----
 
@@ -976,6 +998,16 @@ class Service(object):
                 'dynamic_range': kodi.setting('dynamic_range') or 'sdr',
                 'resume_back': kodi.setting_int('resume_back'),
                 'quality': 'auto'}
+
+    def restart_playback(self, content_id, position):
+        """Silo ended the session while it was paused too long (it keeps the
+        place): play the title again from there (PlaybackManager.on_tick)."""
+        kodi.notify(kodi.string(30260))
+        url = '%s?%s' % (mapping.PLUGIN_ROOT, urlencode({'mode': 'play', 'id': content_id}))
+        try:
+            kodi.jsonrpc('Player.Open', item={'file': url})
+        except Exception as error:  # Kodi keeps what it buffered; nothing more to do
+            kodi.log_warning('Could not play %s again after the long pause: %s' % (content_id, error))
 
     def play(self, query):
         if not self.store.signed_in:
@@ -1105,6 +1137,19 @@ class Service(object):
         if not first:
             return posters, '', ''
         return posters, absolute(first['backdrop_url']), mapping.art_url(self.port, first['content_id'], 'fanart')
+
+    def also_in(self, content_id):
+        """The library collections a film or series is in, for its info page's
+        Also in row; [] when Silo doesn't list them (an older server: 404)."""
+        if not content_id:
+            return []
+        try:
+            answer = self.client.get('/catalog/items/%s/collections' % content_id, **self.client.art_query())
+        except ApiError as error:
+            if error.status == 404:
+                return []
+            raise
+        return also_in_cards(answer, self.client.server_url)
 
     def collection_items(self, library_id, collection_id):
         """A library collection's titles as Kodi library ids, in Silo's order."""

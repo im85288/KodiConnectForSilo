@@ -139,6 +139,11 @@
           </dependencies>
           <control type="list" format="integer"/>
         </setting>
+        <setting id="silo_notices" type="boolean" label="30261" help="30262">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
         <setting id="choose_top10" type="action" label="30182" help="30184">
           <level>0</level>
           <data>RunPlugin(plugin://plugin.video.kodiconnectforsilo/?mode=top10)</data>

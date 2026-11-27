@@ -19,6 +19,11 @@ PROTOCOL = 3
 HLS_DELIVERIES = ('server_remux_hls', 'server_transcode_hls')
 PLAYABLE_DELIVERIES = ('original_http',) + HLS_DELIVERIES
 PROGRESS_INTERVAL = 10
+# Silo ends a session left paused past its timeout (silo-server #5180, 15
+# minutes by default). Saying the add-on handles that gets the end its own
+# code, so a resume can pick up again (PlaybackManager.on_tick).
+CLIENT_FEATURES = ['paused_timeout_v1']
+PAUSED_TIMEOUT = 'playback_session_paused_timeout'
 
 # Kodi's FFmpeg decodes all of these in software on every platform.
 VIDEO_CODECS = ['h264', 'hevc', 'av1', 'vp9', 'vp8', 'mpeg4', 'mpeg2video', 'vc1', 'wmv3']
@@ -115,6 +120,9 @@ class Session(object):
         self.position = 0.0
         self.paused = False
         self.stopped = False
+        # Silo ended it while it was paused too long (PAUSED_TIMEOUT): it is
+        # played again from where it was left once Kodi resumes.
+        self.expired = False
         self.last_report = 0
         self.started_at = time.time()
         self.markers = []
@@ -162,6 +170,7 @@ class Session(object):
             if error.status in (404, 410):
                 # The server ended this session (an admin stop, or it expired).
                 self.stopped = True
+                self.expired = error.code == PAUSED_TIMEOUT or (error.status == 410 and self.paused)
             raise
 
     def stop(self, player_seconds=None):
@@ -185,11 +194,13 @@ class Session(object):
 
 
 class PlaybackManager(object):
-    def __init__(self, client, version, settings, log=None, media_url=None, ledger=None):
+    def __init__(self, client, version, settings, log=None, media_url=None, ledger=None, restart=None):
         """settings: callable returning {'max_resolution', 'dynamic_range', 'quality'}.
         media_url: maps a Silo media URL to the address Kodi should open.
         ledger: a file naming the sessions still open, so the next start can
-        end the ones Kodi was killed or crashed holding (close_leftovers)."""
+        end the ones Kodi was killed or crashed holding (close_leftovers).
+        restart: called with (content_id, position) to play a title again
+        from position, after Silo ended its session for a long pause."""
         self.client = client
         self.ledger = ledger
         self.media_url = media_url or (lambda url, name=None: url)
@@ -200,6 +211,10 @@ class PlaybackManager(object):
         self._capability = None
         self.pending = None  # started, waiting for Kodi to begin playing
         self.active = None
+        self.restart = restart
+        # (content_id, position): the next start of that title begins there,
+        # not at Silo's resume point (a restart after a long pause).
+        self.restart_at = None
 
     def capability(self, refresh=False):
         if self._capability is None or refresh:
@@ -224,7 +239,7 @@ class PlaybackManager(object):
         client_caps, context = capabilities(self.version, settings.get('max_resolution', '1080p'),
                                             settings.get('dynamic_range', 'sdr'))
         body = {
-            'protocol_version': PROTOCOL, 'client_features': [],
+            'protocol_version': PROTOCOL, 'client_features': list(CLIENT_FEATURES),
             'file_id': str(version['file_id']), 'profile_id': profile_id,
             'playback_attempt_id': str(uuid.uuid4()),
             'quality_preference': settings.get('quality') or 'auto',
@@ -233,6 +248,10 @@ class PlaybackManager(object):
             'client_capabilities': client_caps, 'client_playback_context': context,
         }
         position = mapping.play_state(item)[1]
+        restart_at, self.restart_at = self.restart_at, None
+        restarted = bool(restart_at and restart_at[0] == content_id)
+        if restarted:
+            resume, position = True, restart_at[1]
         resume_to = None
         if resume and position:
             resume_to = resume_position(position, settings.get('resume_back', DEFAULT_RESUME_BACK))
@@ -301,8 +320,10 @@ class PlaybackManager(object):
             'mime_type': stream.get('mime_type') or '',
             'hls': plan.get('delivery') in HLS_DELIVERIES,
             # Where the stream starts relative to the title, for a converted stream.
+            # A restart after a long pause plays the original file from its place
+            # (Kodi has no resume point of its own for it).
             'start_offset': float(timeline.get('player_start_seconds') or 0) if plan.get('delivery') in HLS_DELIVERIES
-            else 0,
+            else (resume_to or 0) if restarted else 0,
             'headers': stream.get('headers') or {},
             'subtitles': subtitles,
             'title': item.get('title') or '',
@@ -337,6 +358,17 @@ class PlaybackManager(object):
 
     def on_tick(self, player_seconds, paused):
         session = self.active
+        if session and session.expired and not paused:
+            # Silo ended the session while it was paused too long, having kept
+            # its place; Kodi has resumed, so play it again from there. Once.
+            session.expired = False
+            position = session.position
+            self.log('Silo ended the paused session for %s; playing it again from %.0f s'
+                     % (session.content_id, position))
+            if self.restart:
+                self.restart_at = (session.content_id, position)
+                self.restart(session.content_id, position)
+            return
         if not session or session.stopped:
             return
         if time.time() - session.last_report >= PROGRESS_INTERVAL or paused != session.paused:

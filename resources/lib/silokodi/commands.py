@@ -185,6 +185,11 @@ def handle(service, name, query):
             return {'items': service.with_details(service.person_items(query['person'], query.get('type')))}
         except (ApiError, requests.RequestException) as error:
             return {'error': str(error)}
+    elif name == 'also_in':
+        try:
+            return {'collections': service.also_in(query.get('id') or '')}
+        except (ApiError, requests.RequestException) as error:
+            return {'error': str(error)}
     elif name == 'videos':
         try:
             return {'videos': service.title_videos(query.get('id') or '')}

@@ -169,6 +169,8 @@ def run(argv):
         return forget_channel(params.get('id'))
     if mode == 'videos':
         return videos(base, handle, params.get('id'))
+    if mode == 'also_in':
+        return also_in(base, handle, params.get('id'))
     if mode == 'cast':
         return cast(base, handle, params.get('type'), params.get('dbid'))
     if mode == 'person':
@@ -815,6 +817,37 @@ def make_request(media_type, tmdb_id):
     kodi.set_property('library_updated', str(int(time.time())))
 
 
+def add_collection(base, handle, card):
+    """One collection as a folder opening its titles: poster, count and, when
+    known, its first titles' posters and backdrop."""
+    item = xbmcgui.ListItem(card['title'], offscreen=True)
+    # A property, not label2: Kodi overwrites a folder's label2 with sort details.
+    item.setProperty('silo.count', str(card.get('count') or ''))
+    art = {'poster': card['poster'], 'thumb': card['poster']} if card.get('poster') else {}
+    if card.get('hero') or card.get('backdrop'):
+        # Its first title's backdrop, at the relay's lasting address when
+        # known: a skin's hero behind the card and on the collection's page.
+        art['fanart'] = card.get('hero') or card['backdrop']
+    item.setArt(art)
+    # Its first titles' posters, for a Silo-style skin's fanned card.
+    for number, url in enumerate(card.get('fan') or [], 1):
+        item.setProperty('silo.fan%d' % number, url)
+    item.getVideoInfoTag().setPlot('%d titles' % (card.get('count') or 0))
+    query = {'mode': 'widget', 'section': 'collection', 'library': card['library'], 'collection': card['id'],
+             'title': card['title']}
+    xbmcplugin.addDirectoryItem(handle, '%s?%s' % (base, urlencode(query)), item, isFolder=True)
+
+
+def also_in(base, handle, content_id):
+    """The library collections a film or series is in (Silo's "Also in"), for
+    a Silo-style skin's info page row; each opens the collection's titles."""
+    answer = ask_service('command/also_in', timeout=15, id=content_id) if content_id else {}
+    for card in answer.get('collections') or []:
+        add_collection(base, handle, card)
+    xbmcplugin.setContent(handle, 'sets')
+    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
 def collections(base, handle, library_ids, top=0):
     """Silo's Collections section for a page's libraries: each collection a
     folder with its poster and count, opening its titles. top: only the
@@ -827,22 +860,7 @@ def collections(base, handle, library_ids, top=0):
     if top:
         cards = sorted(cards, key=lambda card: -(card.get('count') or 0))[:top]
     for card in cards:
-        item = xbmcgui.ListItem(card['title'], offscreen=True)
-        # A property, not label2: Kodi overwrites a folder's label2 with sort details.
-        item.setProperty('silo.count', str(card.get('count') or ''))
-        art = {'poster': card['poster'], 'thumb': card['poster']} if card.get('poster') else {}
-        if card.get('hero') or card.get('backdrop'):
-            # Its first title's backdrop, at the relay's lasting address when
-            # known: a skin's hero behind the card and on the collection's page.
-            art['fanart'] = card.get('hero') or card['backdrop']
-        item.setArt(art)
-        # Its first titles' posters, for a Silo-style skin's fanned card.
-        for number, url in enumerate(card.get('fan') or [], 1):
-            item.setProperty('silo.fan%d' % number, url)
-        item.getVideoInfoTag().setPlot('%d titles' % (card.get('count') or 0))
-        query = {'mode': 'widget', 'section': 'collection', 'library': card['library'], 'collection': card['id'],
-                 'title': card['title']}
-        xbmcplugin.addDirectoryItem(handle, '%s?%s' % (base, urlencode(query)), item, isFolder=True)
+        add_collection(base, handle, card)
     if top and len(answer.get('collections') or []) > len(cards):
         more = xbmcgui.ListItem(kodi.string(30165), offscreen=True)
         more.setProperty('silo.see_all', 'true')

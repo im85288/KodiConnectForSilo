@@ -15,7 +15,9 @@ except ImportError:  # pragma: no cover
 
 import websocket
 
-CHANNELS = 'catalog,user_state'
+# notifications: Silo's notices for the profile (notices.py); it needs a
+# profile-bound ticket, and a refused channel costs only itself.
+CHANNELS = 'catalog,user_state,notifications'
 
 
 def socket_url(server_url):

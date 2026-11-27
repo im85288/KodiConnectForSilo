@@ -302,6 +302,56 @@ def test_session_ended_by_admin_stops_reporting(store):
     assert not [s for s in client.session.sent if s[0] == 'DELETE']
 
 
+PAUSED_TOO_LONG = Response(410, {'type': 'https://siloserver.org/docs/api/v2/problems/playback_session_paused_timeout',
+                                  'status': 410})
+
+
+def test_a_session_ended_for_a_long_pause_plays_again_from_its_place_on_resume(store):
+    restarts = []
+    mgr, client = manager(store, [
+        ('GET', '/api/v2/catalog/items/movie-1', Response(200, movie())),
+        ('GET', '/api/v2/playback/capabilities', Response(200, CAPABILITY)),
+        ('POST', '/api/v2/playback/start', Response(201, plan())),
+        ('POST', '/api/v2/playback/s1/progress', Response(200, {'outcome': 'applied'})),
+        ('POST', '/api/v2/playback/s1/progress', PAUSED_TOO_LONG)])
+    mgr.restart = lambda content_id, position: restarts.append((content_id, position))
+    mgr.start('movie-1')
+    # The add-on says it handles the timeout, so Silo answers it with its own code.
+    assert 'paused_timeout_v1' in client.session.sent[2][2]['client_features']
+    mgr.on_started()
+    mgr.on_tick(1200, True)  # paused: reports at once
+    mgr.active.last_report = 0
+    mgr.on_tick(1200, True)  # still paused, 20 minutes on: Silo has ended it
+    assert mgr.active.stopped and mgr.active.expired
+    assert restarts == []  # nothing while it stays paused
+    mgr.on_tick(1201, False)
+    assert restarts == [('movie-1', 1200.0)]
+    mgr.on_tick(1202, False)
+    assert restarts == [('movie-1', 1200.0)]  # once
+    # Played again: from the place it was left (less resume_back), even with no resume flag.
+    client.session.answers += [('GET', '/api/v2/catalog/items/movie-1', Response(200, movie())),
+                               ('POST', '/api/v2/playback/start', Response(201, plan()))]
+    answer = mgr.start('movie-1')
+    assert client.session.sent[-1][2]['start_position'] == 1197.0
+    assert answer['start_offset'] == 1197.0
+    assert mgr.restart_at is None
+
+
+def test_an_admin_stop_while_playing_is_not_played_again(store):
+    restarts = []
+    mgr, client = manager(store, [
+        ('GET', '/api/v2/catalog/items/movie-1', Response(200, movie())),
+        ('GET', '/api/v2/playback/capabilities', Response(200, CAPABILITY)),
+        ('POST', '/api/v2/playback/start', Response(201, plan())),
+        ('POST', '/api/v2/playback/s1/progress', Response(410, {'type': 'x/playback_session_ended', 'status': 410}))])
+    mgr.restart = lambda content_id, position: restarts.append((content_id, position))
+    mgr.start('movie-1')
+    mgr.on_started()
+    mgr.on_tick(5, False)
+    mgr.on_tick(6, False)
+    assert mgr.active.stopped and not mgr.active.expired and restarts == []
+
+
 def test_dolby_vision_profile_7_option_declares_it():
     client, context = playback.capabilities('0.1.0', '2160p', 'dv7')
     assert client['hdr_details']['dolby_vision_profiles'] == [5, 7, 8]

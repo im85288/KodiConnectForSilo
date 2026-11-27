@@ -110,9 +110,9 @@ def test_art_url_quotes_ids():
 
 
 def test_socket_url():
-    assert events.socket_url('https://silo.test') == 'wss://silo.test/api/v2/events/ws?channels=catalog,user_state'
+    assert events.socket_url('https://silo.test') == 'wss://silo.test/api/v2/events/ws?channels=catalog,user_state,notifications'
     assert events.socket_url('http://192.168.1.49:8090/') == \
-        'ws://192.168.1.49:8090/api/v2/events/ws?channels=catalog,user_state'
+        'ws://192.168.1.49:8090/api/v2/events/ws?channels=catalog,user_state,notifications'
 
 
 def test_event_frames_reach_the_handler():

@@ -1428,3 +1428,18 @@ def test_a_started_show_has_its_episodes_left():
     assert episodes_left('tvshow', {'episode': 8, 'watchedepisodes': 0}) == ''  # not started
     assert episodes_left('tvshow', {'episode': 8, 'watchedepisodes': 8}) == ''  # the tick instead
     assert episodes_left('movie', {'playcount': 0}) == ''
+
+
+def test_also_in_lists_the_library_collections_a_title_is_in():
+    from resources.lib.silokodi.sync import also_in_cards
+    answer = {'items': [
+        {'id': 'c1', 'source': 'library', 'title': 'Christmas', 'poster_url': '/api/v2/art/c1?sig=x',
+         'item_count': 24, 'library_id': 3},
+        {'id': 'c2', 'source': 'user', 'title': 'My list', 'poster_url': '', 'item_count': 5,
+         'creator_profile_id': 'p1'},
+        {'id': 'c3', 'source': 'library', 'title': 'Empty', 'item_count': 0, 'library_id': 3}],
+        'preview_items': []}
+    assert also_in_cards(answer, 'https://silo.test/') == [
+        {'id': 'c1', 'title': 'Christmas', 'count': 24, 'poster': 'https://silo.test/api/v2/art/c1?sig=x',
+         'library': '3'}]
+    assert also_in_cards({}, 'https://silo.test') == []

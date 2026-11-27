@@ -70,6 +70,22 @@ def collection_cards(tab):
     return cards
 
 
+def also_in_cards(answer, server_url):
+    """The library collections a title is in (Silo's "Also in", silo-server
+    #4528) as collection_cards gives them, each knowing its library. A
+    personal collection has no library page to open, so is left out."""
+    server = server_url.rstrip('/')
+    cards = []
+    for card in answer.get('items') or []:
+        if card.get('source') != 'library' or card.get('library_id') is None or not card.get('item_count'):
+            continue
+        poster = card.get('poster_url') or ''
+        cards.append({'id': card['id'], 'title': card.get('title') or '', 'count': card['item_count'],
+                      'poster': server + poster if poster.startswith('/') else poster,
+                      'library': str(card['library_id'])})
+    return cards
+
+
 def home_row_items(page, section, db):
     """A Silo home row's cards as [{'type', 'kodi_id', 'tint'}] in Silo's order.
     Titles not synced to Kodi (other media types, excluded libraries) are left
