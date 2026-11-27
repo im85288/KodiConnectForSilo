@@ -202,6 +202,17 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.39.0 (2026-11-27)
+- **Long pauses**: playback advertises `paused_timeout_v1`. When Silo ends a session left paused past its timeout
+  (silo-server #5180, 15 minutes by default), it answers 410 `playback_session_paused_timeout`; on resume the add-on
+  plays the title again from where it was paused (`PlaybackManager.restart_at`), instead of the relay refusing the
+  stream and the rest of the watch going unrecorded.
+- **Silo notices**: the event socket also takes the `notifications` channel; `notification.created` (a new Next Up
+  episode, a request or watchlist title arriving, a request approved or declined) shows as a Kodi notice with the
+  title's poster (`notices.py`; setting *Show Silo's notices*, on by default).
+- **Also in** (Skyline 0.33.0's info page): `plugin.also_in` lists the library collections a film or series is in
+  (`/catalog/items/{id}/collections`, silo-server #4528); each opens the collection's titles.
+
 ### v0.38.0 (2026-11-27)
 - **Mini TV guide** (Skyline 0.31.0, Right in Live TV): `plugin.mini_cards` builds every channel by number from the
   playing one (`channels.from_playing`), with what's on, when it started, progress, LIVE, what's next and HD / UHD;
