@@ -130,6 +130,8 @@ def run(argv):
         return restart_now(base, handle)
     if mode == 'recent_channels':
         return recent_channels(base, handle)
+    if mode == 'mini_guide':
+        return mini_guide(base, handle)
     if mode == 'on_now_channels':
         return on_now_channels(base, handle)
     if mode == 'next_on':
@@ -359,6 +361,26 @@ def on_now_channels(base, handle):
     for channel in channels.on_now(tv_channels(), playing_channel()):
         xbmcplugin.addDirectoryItem(handle, '%s?mode=play_channel&id=%d' % (base, channel['channelid']),
                                     channel_item(base, channel), isFolder=False)
+    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+
+
+def mini_guide(base, handle):
+    """Skyline's mini TV guide (Right in Live TV, as Sky's): every channel by
+    number from the playing one (its wrapping list opens on it), with what's
+    on (started when, how far in, LIVE) and what's next."""
+    playing = playing_channel()
+    found = tv_channels(CHANNEL_FIELDS + ['broadcastnext'])
+    for channel in channels.from_playing(found, playing):
+        item = channel_item(base, channel)
+        on, nxt = channel.get('broadcastnow') or {}, channel.get('broadcastnext') or {}
+        started = channels.utc_seconds(on['starttime']) if on.get('starttime') else None
+        after = channels.utc_seconds(nxt['starttime']) if nxt.get('starttime') else None
+        item.setProperties({'silo.started': time.strftime('%H:%M', time.localtime(started)) if started else '',
+                            'silo.next': nxt.get('title') or '',
+                            'silo.next_time': time.strftime('%H:%M', time.localtime(after)) if after else '',
+                            'silo.playing': '1' if channel.get('channelid') == playing else ''})
+        xbmcplugin.addDirectoryItem(handle, '%s?mode=play_channel&id=%d' % (base, channel['channelid']), item,
+                                    isFolder=False)
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
 
 

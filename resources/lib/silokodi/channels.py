@@ -40,6 +40,16 @@ def on_now(channels, playing=None):
     return sorted(shown, key=lambda c: (c.get('channelnumber') or 10 ** 6, c.get('label') or ''))
 
 
+def from_playing(channels, playing):
+    """Every channel shown in the guide by number, starting with the playing
+    one (the others after it, wrapping round), for a list that wraps."""
+    shown = sorted((c for c in channels if not c.get('hidden')),
+                   key=lambda c: (c.get('channelnumber') or 10 ** 6, c.get('label') or ''))
+    ids = [c.get('channelid') for c in shown]
+    at = ids.index(playing) if playing in ids else 0
+    return shown[at:] + shown[:at]
+
+
 def neighbour(channels, playing, step):
     """The channel step (1 or -1) along the guide's numbers from the playing
     one, wrapping round at the ends; None if there's no other."""

@@ -153,3 +153,12 @@ def test_the_overlay_cards_name_the_previous_and_next_channels(monkeypatch):
     assert props['tv.chprev.left'] and props['tv.chnext.name'] == 'TNT Sports 1' and props['tv.chnext.title'] == ''
     banner.publish_neighbours('', found)
     assert props['tv.chprev.name'] == '' and props['tv.chnext.name'] == ''
+
+
+def test_the_mini_guide_starts_on_the_playing_channel_and_wraps():
+    from resources.lib.silokodi import channels
+    found = [{'channelid': 3, 'channelnumber': 21}, {'channelid': 1, 'channelnumber': 1},
+             {'channelid': 2, 'channelnumber': 2}, {'channelid': 4, 'channelnumber': 3, 'hidden': True},
+             {'channelid': 5, 'channelnumber': 121}]
+    assert [c['channelid'] for c in channels.from_playing(found, 3)] == [3, 5, 1, 2]
+    assert [c['channelid'] for c in channels.from_playing(found, None)] == [1, 2, 3, 5]
