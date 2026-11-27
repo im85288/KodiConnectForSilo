@@ -384,8 +384,9 @@ def mini_cards(found=None, playing=None, uhd=None):
         started = channels.utc_seconds(on['starttime']) if on.get('starttime') else None
         after = channels.utc_seconds(nxt['starttime']) if nxt.get('starttime') else None
         from . import tvrows
+        # Nothing on (the Match day channel between matches): its name, not an empty row.
         cards.append({'name': channel.get('label') or '', 'logo': channel.get('icon') or '',
-                      'now': tvrows.without_marks(on.get('title') or ''),
+                      'now': tvrows.without_marks(on.get('title') or '') or channel.get('label') or '',
                       'started': time.strftime('%H:%M', time.localtime(started)) if started else '',
                       'progress': str(int(on.get('progresspercentage') or 0)),
                       'live': '1' if channels.is_live(on.get('genre')) else '',

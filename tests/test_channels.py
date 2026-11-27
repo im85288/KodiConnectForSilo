@@ -175,7 +175,7 @@ def test_the_mini_guide_cards_start_on_the_playing_channel():
              {'channelid': 3, 'channelnumber': 21, 'label': 'TNT Sports 1', 'icon': 'tnt.png'}]
     cards = plugin.mini_cards(found, playing=2, uhd='|Main Event|')
     assert [c['name'] for c in cards] == ['Premier League', 'TNT Sports 1', 'Main Event']
-    assert cards[0]['playing'] == '1' and cards[0]['quality'] == 'HD' and cards[1]['now'] == ''
+    assert cards[0]['playing'] == '1' and cards[0]['quality'] == 'HD' and cards[1]['now'] == 'TNT Sports 1'
     me = cards[2]
     assert me['quality'] == 'UHD' and me['live'] == '1' and me['progress'] == '53'
     assert me['next'] == 'Total Football' and me['started'] and me['next_time'] and me['channelid'] == '1'
