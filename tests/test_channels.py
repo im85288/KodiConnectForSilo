@@ -162,3 +162,20 @@ def test_the_mini_guide_starts_on_the_playing_channel_and_wraps():
              {'channelid': 5, 'channelnumber': 121}]
     assert [c['channelid'] for c in channels.from_playing(found, 3)] == [3, 5, 1, 2]
     assert [c['channelid'] for c in channels.from_playing(found, None)] == [1, 2, 3, 5]
+
+
+def test_the_mini_guide_cards_start_on_the_playing_channel():
+    from resources.lib.silokodi import plugin
+    found = [{'channelid': 1, 'channelnumber': 1, 'label': 'Main Event', 'icon': 'me.png',
+              'broadcastnow': {'title': 'Sky Sports FC', 'starttime': '2026-11-27 11:00:00', 'progresspercentage': 53.4,
+                               'genre': ['Live']},
+              'broadcastnext': {'title': 'Total Football', 'starttime': '2026-11-27 12:00:00'}},
+             {'channelid': 2, 'channelnumber': 2, 'label': 'Premier League', 'icon': 'pl.png',
+              'broadcastnow': {'title': 'Netbusters'}},
+             {'channelid': 3, 'channelnumber': 21, 'label': 'TNT Sports 1', 'icon': 'tnt.png'}]
+    cards = plugin.mini_cards(found, playing=2, uhd='|Main Event|')
+    assert [c['name'] for c in cards] == ['Premier League', 'TNT Sports 1', 'Main Event']
+    assert cards[0]['playing'] == '1' and cards[0]['quality'] == 'HD' and cards[1]['now'] == ''
+    me = cards[2]
+    assert me['quality'] == 'UHD' and me['live'] == '1' and me['progress'] == '53'
+    assert me['next'] == 'Total Football' and me['started'] and me['next_time'] and me['channelid'] == '1'

@@ -130,8 +130,6 @@ def run(argv):
         return restart_now(base, handle)
     if mode == 'recent_channels':
         return recent_channels(base, handle)
-    if mode == 'mini_guide':
-        return mini_guide(base, handle)
     if mode == 'on_now_channels':
         return on_now_channels(base, handle)
     if mode == 'next_on':
@@ -364,24 +362,39 @@ def on_now_channels(base, handle):
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
 
 
-def mini_guide(base, handle):
-    """Skyline's mini TV guide (Right in Live TV, as Sky's): every channel by
-    number from the playing one (its wrapping list opens on it), with what's
-    on (started when, how far in, LIVE) and what's next."""
-    playing = playing_channel()
-    found = tv_channels(CHANNEL_FIELDS + ['broadcastnext'])
-    for channel in channels.from_playing(found, playing):
-        item = channel_item(base, channel)
+MINI_CARDS = 40  # Skyline's mini TV guide's places (MINI_CARDS there)
+MINI_FIELDS = ('name', 'logo', 'now', 'started', 'progress', 'live', 'next', 'next_time', 'channelid', 'playing',
+               'quality')
+
+
+def mini_cards(found=None, playing=None, uhd=None):
+    """Skyline's mini TV guide (Right in Live TV, as Sky's) as {field: text}
+    (MINI_FIELDS): every channel by number from the playing one (its wrapping
+    list opens on it), with what's on (started when, how far in, LIVE),
+    what's next, and HD / UHD (the playlist's UHD channels: tv.uhd). The
+    service publishes them (silokodi.mini.N.*), so the panel opens with
+    them: a plugin listing arrived after it."""
+    if found is None:
+        playing = playing_channel()
+        found = tv_channels(CHANNEL_FIELDS + ['broadcastnext'])
+    uhd = kodi.get_property('tv.uhd') if uhd is None else uhd
+    cards = []
+    for channel in channels.from_playing(found, playing)[:MINI_CARDS]:
         on, nxt = channel.get('broadcastnow') or {}, channel.get('broadcastnext') or {}
         started = channels.utc_seconds(on['starttime']) if on.get('starttime') else None
         after = channels.utc_seconds(nxt['starttime']) if nxt.get('starttime') else None
-        item.setProperties({'silo.started': time.strftime('%H:%M', time.localtime(started)) if started else '',
-                            'silo.next': nxt.get('title') or '',
-                            'silo.next_time': time.strftime('%H:%M', time.localtime(after)) if after else '',
-                            'silo.playing': '1' if channel.get('channelid') == playing else ''})
-        xbmcplugin.addDirectoryItem(handle, '%s?mode=play_channel&id=%d' % (base, channel['channelid']), item,
-                                    isFolder=False)
-    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+        from . import tvrows
+        cards.append({'name': channel.get('label') or '', 'logo': channel.get('icon') or '',
+                      'now': tvrows.without_marks(on.get('title') or ''),
+                      'started': time.strftime('%H:%M', time.localtime(started)) if started else '',
+                      'progress': str(int(on.get('progresspercentage') or 0)),
+                      'live': '1' if channels.is_live(on.get('genre')) else '',
+                      'next': tvrows.without_marks(nxt.get('title') or ''),
+                      'next_time': time.strftime('%H:%M', time.localtime(after)) if after else '',
+                      'channelid': str(channel['channelid']),
+                      'playing': '1' if channel.get('channelid') == playing else '',
+                      'quality': 'UHD' if '|%s|' % (channel.get('label') or '') in uhd else 'HD'})
+    return cards
 
 
 NEXT_ON = 10  # programmes in the overlay's Next on row

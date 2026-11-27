@@ -1414,12 +1414,31 @@ class Service(object):
             self.tv_publishing = False
 
     def publish_neighbours(self, channel):
-        """The overlay's previous and next channels (banner.publish_neighbours)."""
+        """The overlay's previous and next channels (banner.publish_neighbours),
+        and the mini TV guide's cards (publish_mini_cards)."""
         try:
             from . import banner as banner_window
             banner_window.publish_neighbours(channel)
         except Exception as error:  # the buttons show no card
             kodi.log_warning('TV overlay: neighbours: %s' % error)
+        self.publish_mini_cards()
+
+    def publish_mini_cards(self):
+        """Skyline's mini TV guide (plugin.mini_cards) as silokodi.mini.N.*,
+        only what changed: as the channel or programme changes and every 30 s
+        while Live TV plays, so the panel opens with them."""
+        from . import plugin
+        try:
+            cards = plugin.mini_cards()
+        except Exception as error:  # the panel keeps what it had
+            kodi.log_warning('Mini TV guide: %s' % error)
+            return
+        for n in range(1, plugin.MINI_CARDS + 1):
+            card = cards[n - 1] if len(cards) >= n else {}
+            for field in plugin.MINI_FIELDS:
+                key, value = 'mini.%d.%s' % (n, field), card.get(field, '')
+                if kodi.get_property(key) != value:
+                    kodi.set_property(key, value)
 
     def publish_catchup_logo(self):
         """A programme playing from catch-up: its channel's logo for Skyline's
