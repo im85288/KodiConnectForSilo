@@ -167,6 +167,16 @@ def run(argv):
         return None
     if mode == 'forget_channel':
         return forget_channel(params.get('id'))
+    if mode == 'iplayer':
+        # A TV page card's iPlayer episode, played by iPlayer WWW (iplayer.py).
+        from . import iplayer
+        return iplayer.play(params.get('path') or '')
+    if mode == 'iplayer_epg':
+        # A BBC programme in the guide or banner with no catch-up: on iPlayer, by channel and start.
+        from . import iplayer
+        start = params.get('start') or ''
+        start = int(start) if start.isdigit() else iplayer.guide_start(params.get('date') or '')
+        return iplayer.play_programme(params.get('channel') or '', start) if start else None
     if mode == 'videos':
         return videos(base, handle, params.get('id'))
     if mode == 'also_in':

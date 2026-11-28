@@ -31,7 +31,11 @@ GROUP_ROWS = tuple('group%d' % n for n in range(1, 7))  # Skyline's TV page has 
 # Recent channels first, as Sky Stream's home; My teams last: it's often a
 # fixture days off (the user's order).
 ROWS = ((RECENT_ROW, 'Recent channels'),) + tuple((key, '') for key in GROUP_ROWS) + \
-    ((UPCOMING_ROW, 'Coming up live'), (CATCHUP_ROW, 'Catch up'), (TEAMS_ROW, 'My teams'))
+    ((UPCOMING_ROW, 'Coming up live'), (CATCHUP_ROW, 'Catch up'), (TEAMS_ROW, 'My teams'),
+     # BBC iPlayer (iplayer.py, played by iPlayer WWW): the teams' highlights
+     # (titled for the first team), every match's, and the account's Continue watching.
+     ('iplayer_team', 'Highlights'), ('iplayer_league', 'Premier League highlights'),
+     ('iplayer_continue', 'Continue watching on iPlayer'))
 # Coming up live, as Sky Stream's "Live & upcoming": live events starting
 # within UPCOMING_AHEAD on any channel, soonest first, one card an event (its
 # channels together); OK sets or removes its reminder.

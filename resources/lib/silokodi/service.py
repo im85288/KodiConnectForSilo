@@ -18,7 +18,7 @@ import xbmc
 import xbmcgui
 
 from . import catchup, jump, kodi, kodidb, mapping, migrate, tracks, upnext, keymap
-from . import bigart, channels, commands, display, liveprompts, notices, playeraudio, playersubs, skinoptions, theme, tvrows
+from . import bigart, channels, commands, display, iplayer, liveprompts, notices, playeraudio, playersubs, skinoptions, theme, tvrows
 from .theme import ThemePlayer
 from . import api
 from .api import ApiError, SignedOut, SiloClient
@@ -1432,8 +1432,15 @@ class Service(object):
         try:
             started = time.time()
             reminded = set(tvrows.load_reminders())
-            cards = tvrows.gather(tvrows.team_names(kodi.setting('tv_teams')), reminded)
+            teams = tvrows.team_names(kodi.setting('tv_teams'))
+            cards = tvrows.gather(teams, reminded)
             titles = cards.pop(tvrows.TITLES, {})
+            try:
+                cards.update(iplayer.rows(teams, tvrows.mentions))
+                if teams:
+                    titles['iplayer_team'] = '%s highlights' % teams[0]
+            except Exception as error:  # the iPlayer rows stay empty
+                kodi.log_warning('TV page: iPlayer rows: %s' % error)
             tvrows.fill_reminders(cards)
             props = {}
             for row, (key, title) in enumerate(tvrows.ROWS, 1):

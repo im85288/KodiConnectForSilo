@@ -16,7 +16,7 @@ WINDOW = 1183  # Skyline's banner window
 NEXT = 2  # the programmes after it, alongside, as Sky Stream's banner
 NEXT_KEYS = tuple('next%d.%s' % (n, key) for n in range(1, NEXT + 1) for key in ('title', 'time', 'picture'))
 KEYS = ('title', 'times', 'plot', 'picture', 'live', 'when', 'archive', 'broadcastid', 'channelid', 'start',
-        'offset', 'channel', 'number', 'logo', 'hint') + NEXT_KEYS
+        'offset', 'channel', 'number', 'logo', 'iplayer', 'hint') + NEXT_KEYS
 BROADCASTS_KEEP = 300  # seconds a channel's programmes are kept for the banner
 _broadcasts = {}       # channel id: (when read, its programmes)
 
@@ -129,9 +129,10 @@ def programme(broadcasts, now, offset):
     return shows[target], target - here
 
 
-def hint(when, archive, reminded):
+def hint(when, archive, reminded, iplayer=False):
     if when == 'past':
-        return 'OK  Watch from the start' if archive else 'Not on catch-up'
+        # A BBC programme without catch-up: from BBC iPlayer (iplayer.py) instead.
+        return 'OK  Watch from the start' if archive else 'OK  Watch on iPlayer' if iplayer else 'Not on catch-up'
     if when == 'future':
         return 'Reminder set  ·  OK to remove' if reminded else 'OK  Remind me'
     return 'OK  Watch'
@@ -156,6 +157,8 @@ def step(direction, now=None):
         return
     when = 'past' if show['end'] <= now else 'now' if show['start'] <= now else 'future'
     archive = when == 'past' and bool(channel.get('hasarchive'))
+    from . import iplayer
+    on_iplayer = when == 'past' and not archive and iplayer.on_iplayer(channel.get('label') or '')
     today = time.localtime(now)[:3]
     title = tvrows.without_marks(show.get('title') or show.get('label') or '')
     reminded = when == 'future' and str(int(show['start'])) in tvrows.load_reminders()
@@ -165,7 +168,8 @@ def step(direction, now=None):
               'archive': '1' if archive else '', 'broadcastid': str(show.get('broadcastid') or ''),
               'channelid': str(channel['channelid']), 'start': str(int(show['start'])), 'offset': str(offset),
               'channel': channel.get('label') or '', 'number': str(channel.get('channelnumber') or ''),
-              'logo': channel.get('icon') or '', 'hint': hint(when, archive, reminded)}
+              'logo': channel.get('icon') or '', 'iplayer': '1' if on_iplayer else '',
+              'hint': hint(when, archive, reminded, on_iplayer)}
     for key, value in values.items():
         kodi.set_property('banner.' + key, value)
     publish_next('banner.', shows, show['start'])
@@ -187,6 +191,9 @@ def play():
         kodi.set_property('banner.hint', hint('future', False, on))
         kodi.set_property('tv.refresh', '1')  # the TV page's cards say so
         return False
+    if shown['when'] == 'past' and shown.get('iplayer') and shown['start'].isdigit():
+        from . import iplayer
+        return iplayer.play_programme(shown['channel'], int(shown['start']))
     if shown['when'] == 'past':
         kodi.notify('This programme isn\'t on catch-up')
     return False
