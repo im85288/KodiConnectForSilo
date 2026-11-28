@@ -202,6 +202,11 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.41.0 (2026-11-28)
+- **Ultra HD on iPlayer** (Skyline 0.38.0): a TV page row of the programmes whose episodes iPlayer has in UHD (ibl
+  marks each version `uhd`/`hdr`; there is no UHD list, so the categories are scanned, about 27 calls, kept 6 hours),
+  newest first. A film or one-off plays; a series opens its episodes in iPlayer WWW (its mode 121).
+
 ### v0.40.0 (2026-11-28)
 - **BBC iPlayer** (`iplayer.py`, Skyline 0.37.0): reads iPlayer's public catalogue (ibl) and hands playback to the
   iPlayer WWW add-on (`plugin.video.iplayerwww`, from Kodi's repository); it never asks the BBC for a stream itself.
