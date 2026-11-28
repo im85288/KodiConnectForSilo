@@ -202,6 +202,17 @@ Android, in the `python:3.8` image), 3.11 (Kodi 21) and 3.14. Kodi's embedded Py
 
 ## Changes
 
+### v0.40.0 (2026-11-28)
+- **BBC iPlayer** (`iplayer.py`, Skyline 0.37.0): reads iPlayer's public catalogue (ibl) and hands playback to the
+  iPlayer WWW add-on (`plugin.video.iplayerwww`, from Kodi's repository); it never asks the BBC for a stream itself.
+  TV page rows: Premier League highlights (Match of the Day's per-match episodes, the *My teams* first), the full
+  Match of the Day, the BBC account's Continue watching (as iPlayer WWW lists it signed in; the menu key's
+  *Remove from Continue watching* uses its Remove) and Most popular. Rows are empty without iPlayer WWW.
+- **Watch on iPlayer**: a finished programme on a BBC channel with no catch-up is found on iPlayer by its channel and
+  start time (`mode=iplayer_epg`); the guide's OK (keymap: OK in the guide goes through Skyline's `silo_guide_ok`)
+  and the banner's OK play it.
+- The TV page's rows are rebuilt 10 s after playback stops.
+
 ### v0.39.0 (2026-11-27)
 - **Long pauses**: playback advertises `paused_timeout_v1`. When Silo ends a session left paused past its timeout
   (silo-server #5180, 15 minutes by default), it answers 410 `playback_session_paused_timeout`; on resume the add-on

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.39.0" provider-name="im85288">
+<addon id="plugin.video.kodiconnectforsilo" name="KodiConnectForSilo" version="0.40.0" provider-name="im85288">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
     <import addon="script.module.requests" version="2.22.0"/>
@@ -35,7 +35,9 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
-    <news>0.39.0: after a pause longer than Silo's paused-playback timeout (15 minutes by default), pressing play picks up where you left off instead of stalling and losing your progress. Silo's notices (a new Next Up episode, a request or watchlist title arriving) show in Kodi, with a setting to turn them off. Skyline 0.33.0's info page lists the collections a title is in (Also in).
+    <news>0.40.0: BBC iPlayer on Skyline 0.37.0's TV page, played by the iPlayer WWW add-on: Premier League highlights (your teams' first), Match of the Day, your Continue watching (long OK: Remove) and Most popular. In the guide and banner, OK on a finished BBC programme with no catch-up plays it from iPlayer.
+
+0.39.0: after a pause longer than Silo's paused-playback timeout (15 minutes by default), pressing play picks up where you left off instead of stalling and losing your progress. Silo's notices (a new Next Up episode, a request or watchlist title arriving) show in Kodi, with a setting to turn them off. Skyline 0.33.0's info page lists the collections a title is in (Also in).
 
 0.38.0: for Skyline 0.31.0's mini TV guide (Right in Live TV, as Sky's): every channel with what's on and next, ready as soon as it opens.
 
@@ -43,8 +45,6 @@
 
 0.36.0: Live TV (Skyline 0.28.0): the guide's Restart row holds up to 24 programmes, so every channel's fits; the TV page has room for six guide groups, so the Match day row still shows with Premier Sports and Freeview.
 
-0.35.1: Kodi restarts and updates no longer wait 30 s on this add-on: its service stops within Kodi's 5 s (waiting timers are cancelled).
-
-0.35.0: Live TV (Skyline 0.27.0): OK shows what's on with the playback buttons; Left/Right open the recent channels with the one watched before selected (OK watches it); the TV page's Recent channels includes the channel you're watching; the guide's Restart row stays full around the hour (a programme stays to its end; just after it, the one that just ended).</news>
+0.35.1: Kodi restarts and updates no longer wait 30 s on this add-on: its service stops within Kodi's 5 s (waiting timers are cancelled).</news>
   </extension>
 </addon>
