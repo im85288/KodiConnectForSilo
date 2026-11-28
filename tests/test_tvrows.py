@@ -158,9 +158,9 @@ def test_the_layout_has_the_tv_pages_rows_but_not_as_one_of_silos_pages():
     layout = skin_layout([], [], {})
     assert 'tv' not in layout['silo.pages'].split(',')
     titles = [layout['silo.tv.%d.title' % n] for n in range(1, len(tvrows.ROWS) + 1)]
-    assert titles[0] == 'Recent channels' and titles[-6:] == [
+    assert titles[0] == 'Recent channels' and titles[-7:] == [
         'Catch up', 'My teams', 'Premier League highlights', 'Match of the Day', 'Continue watching on iPlayer',
-        'Most popular on iPlayer']
+        'Most popular on iPlayer', 'Ultra HD on iPlayer']
     assert layout['silo.tv.%d.title' % (len(tvrows.ROWS) + 1)] == ''
 
 

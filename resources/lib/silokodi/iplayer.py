@@ -10,6 +10,8 @@ iPlayer WWW, which fetches the stream: it never asks the BBC for a stream itself
   ("Newcastle United v Arsenal Highlights"), on iPlayer for about a week,
   the user's teams' (the My teams setting) first; and the full programmes.
 - Continue watching: the BBC account's list, as iPlayer WWW reads it signed in.
+- Ultra HD: the programmes whose episodes iPlayer has in UHD (ibl marks each
+  version uhd/hdr), newest first; iPlayer WWW plays the best it can get.
 - Watch on iPlayer: a BBC programme the guide has without catch-up, found on
   iPlayer by its channel and start time.
 """
@@ -31,6 +33,14 @@ CHANNELS = {'BBC One': 'bbc_one_london', 'BBC Two': 'bbc_two_england', 'BBC News
             'BBC Three': 'bbc_three', 'BBC Four': 'bbc_four'}
 NEAR = 300  # seconds between the guide's start and the BBC's
 KEEP = 15 * 60
+# The categories scanned for Ultra HD programmes (ibl has no UHD list; one
+# scan is ~27 calls, ~10 s, so it is kept UHD_KEEP).
+UHD_CATEGORIES = ('drama-and-soaps', 'films', 'documentaries', 'science-and-nature', 'history', 'comedy',
+                  'entertainment', 'sport', 'music', 'arts', 'food', 'lifestyle')
+UHD_PAGE = 200
+UHD_KEEP = 6 * 3600
+UHD_CARDS = 30
+UHD = {}
 AGENT = {'User-Agent': 'Mozilla/5.0 (Linux; Kodi) KodiConnectForSilo'}
 CACHE = {}
 
@@ -188,6 +198,73 @@ def popular_card(item):
             'tv.play': play_command(episode_path(item['pid'], title, item['picture'], item['plot']))}
 
 
+def uhd_programmes():
+    """iPlayer's programmes with Ultra HD episodes, newest first (by when their
+    UHD episode arrived): [{'title', 'pid', 'programme', 'episodes', 'subtitle',
+    'picture', 'plot', 'length', 'hdr', 'category', 'added'}]; kept UHD_KEEP,
+    the last list kept when a scan finds nothing."""
+    if UHD.get('at') and time.time() - UHD['at'] < UHD_KEEP:
+        return UHD['items']
+    found = {}
+    for category in UHD_CATEGORIES:
+        page = 1
+        while True:
+            listing = get('categories/%s/programmes' % category, rights='web', per_page=UHD_PAGE, page=page,
+                          sort='title').get('category_programmes') or {}
+            for programme in listing.get('elements') or []:
+                item = uhd_programme(programme)
+                if item and item['programme'] not in found:
+                    found[item['programme']] = item
+            if not listing.get('elements') or page * UHD_PAGE >= (listing.get('count') or 0):
+                break
+            page += 1
+    items = sorted(found.values(), key=lambda i: (i['added'], i['title']), reverse=True)
+    if items or not UHD.get('items'):
+        UHD.update(at=time.time(), items=items)
+    return UHD['items']
+
+
+def uhd_programme(programme):
+    """A category listing's programme as uhd_programmes has it, or None when
+    its episode (ibl's initial child: the newest) isn't Ultra HD."""
+    for episode in programme.get('initial_children') or []:
+        versions = [v for v in episode.get('versions') or [] if v.get('uhd')]
+        if not versions or not episode.get('id') or not programme.get('id'):
+            continue
+        version = versions[0]
+        return {'title': programme.get('title') or episode.get('title') or '', 'pid': episode['id'],
+                'programme': programme['id'], 'episodes': programme.get('count') or 1,
+                'subtitle': episode.get('subtitle') or '',
+                'picture': picture(programme.get('images')) or picture(episode.get('images')),
+                'plot': (programme.get('synopses') or {}).get('small') or
+                        (episode.get('synopses') or {}).get('small') or '',
+                'length': (version.get('duration') or {}).get('text') or '', 'hdr': bool(version.get('hdr')),
+                'category': (programme.get('labels') or {}).get('category') or '',
+                'added': (version.get('availability') or {}).get('start') or ''}
+    return None
+
+
+def programme_episodes_path(programme, title):
+    """iPlayer WWW's list of a programme's episodes (its mode 121)."""
+    return 'plugin://%s/?%s' % (ADDON, urlencode({'url': programme, 'mode': '121', 'name': title}))
+
+
+def uhd_card(item):
+    """A film or one-off plays; a series opens its episodes in iPlayer WWW."""
+    quality = 'Ultra HD  ·  HDR' if item['hdr'] else 'Ultra HD'
+    many = item['episodes'] > 1
+    episodes = '%d episodes' % item['episodes'] if many else item['length']
+    title = ' - '.join(part for part in (item['title'], item['subtitle']) if part)
+    path = programme_episodes_path(item['programme'], item['title']) if many else \
+        episode_path(item['pid'], title, item['picture'], item['plot'])
+    return {'type': 'tv', 'label': item['title'], 'card.title': item['title'], 'card.sub': quality,
+            'card.wide_sub': quality, 'hero.title': item['title'], 'hero.meta': 'BBC iPlayer',
+            'hero.facts': '  ·  '.join(part for part in (quality, item['category'], episodes) if part),
+            'plot': item['plot'], 'percent': '', 'left': episodes,
+            'art.landscape': item['picture'], 'art.fanart': item['picture'], 'tv.logo': '',
+            'tv.play': play_command(path)}
+
+
 TAG = re.compile(r'\s*-\s*\[I\](.*?)\[/I\]\s*$')
 
 
@@ -241,10 +318,10 @@ def continue_card(item):
 
 
 def rows(teams, mentions):
-    """{'iplayer_league', 'iplayer_motd', 'iplayer_continue', 'iplayer_popular'}:
-    the TV page's iPlayer rows' cards (every match's highlights, the teams'
-    first; the full programmes; Continue watching; Most popular); all empty
-    without iPlayer WWW."""
+    """{'iplayer_league', 'iplayer_motd', 'iplayer_continue', 'iplayer_popular',
+    'iplayer_uhd'}: the TV page's iPlayer rows' cards (every match's
+    highlights, the teams' first; the full programmes; Continue watching; Most
+    popular; Ultra HD); all empty without iPlayer WWW."""
     if not installed():
         return {}
     items = episodes()
@@ -257,7 +334,8 @@ def rows(teams, mentions):
     return {'iplayer_league': [highlight_card(i) for i in team_first(matches, teams, mentions)],
             'iplayer_motd': [programme_card(i) for i in items if not i['match']],
             'iplayer_continue': [continue_card(i) for i in watching],
-            'iplayer_popular': [popular_card(i) for i in popular()]}
+            'iplayer_popular': [popular_card(i) for i in popular()],
+            'iplayer_uhd': [uhd_card(i) for i in uhd_programmes()[:UHD_CARDS]]}
 
 
 # ----- a BBC programme from the guide -----
@@ -308,7 +386,12 @@ def play_programme(channel, start):
 
 
 def play(path):
-    """Play an iPlayer WWW address (its items need playing, not running)."""
+    """Play an iPlayer WWW address (its items need playing, not running), or
+    open it when it's a list (a programme's episodes)."""
+    if parse_qs(urlsplit(path).query).get('mode') == ['121']:
+        import xbmc
+        xbmc.executebuiltin('ActivateWindow(Videos,%s,return)' % path)
+        return
     kodi.jsonrpc('Player.Open', item={'file': path})
 
 

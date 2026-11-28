@@ -39,6 +39,7 @@ def test_the_full_programmes_have_their_own_row(monkeypatch):
     monkeypatch.setattr(iplayer, 'get', lambda path, **query: MOTD)
     monkeypatch.setattr(iplayer, 'installed', lambda: True)
     monkeypatch.setattr(iplayer, 'continue_watching', lambda: [])
+    monkeypatch.setattr(iplayer, 'uhd_programmes', lambda: [])
     rows = iplayer.rows(['Newcastle United'], tvrows.mentions)
     assert [c['card.title'] for c in rows['iplayer_league']][:2] == ['Newcastle United v Arsenal',
                                                                     'Nottingham Forest v Chelsea']
@@ -132,3 +133,41 @@ def test_most_popular_on_iplayer(monkeypatch):
     assert [(c['card.title'], c['card.sub'], c['left']) for c in cards] == [
         ('Shetland', 'Series 11: Episode 1', '59 mins'), ('EastEnders', '26/11/2026', '')]
     assert 'm0035sh' in cards[0]['tv.play']
+
+
+def uhd_listing(*programmes):
+    return {'category_programmes': {'count': len(programmes), 'elements': list(programmes)}}
+
+
+def programme(pid, title, count, *, uhd=True, hdr=False, start='2026-11-22T06:00:00Z'):
+    return {'id': pid, 'title': title, 'count': count, 'labels': {'category': 'Nature'},
+            'images': {'standard': 'https://ichef/{recipe}/%s.jpg' % pid}, 'synopses': {'small': 'Oceans.'},
+            'initial_children': [{'id': pid + 'e', 'subtitle': 'Series 1: 6. Future Seas', 'versions': [
+                {'kind': 'original', 'uhd': uhd, 'hdr': hdr, 'duration': {'text': '58 mins'},
+                 'availability': {'start': start}}]}]}
+
+
+def test_ultra_hd_programmes_newest_first_each_once(monkeypatch):
+    answers = {'science-and-nature': uhd_listing(programme('m002zl60', 'Blue Planet III', 6),
+                                                 programme('p0f0t5dp', 'Wild Isles', 5, start='2023-03-12T20:00:00Z'),
+                                                 programme('b0hd', 'In HD only', 3, uhd=False)),
+               'films': uhd_listing(programme('m002m3tl', 'Mr Burton', 1, hdr=True, start='2026-01-01T00:00:00Z')),
+               'documentaries': uhd_listing(programme('m002zl60', 'Blue Planet III', 6))}
+    monkeypatch.setattr(iplayer, 'get', lambda path, **query: answers.get(path.split('/')[1], {}))
+    monkeypatch.setattr(iplayer, 'UHD', {})
+    items = iplayer.uhd_programmes()
+    assert [i['title'] for i in items] == ['Blue Planet III', 'Mr Burton', 'Wild Isles']
+    monkeypatch.setattr(iplayer, 'get', lambda path, **query: {})
+    assert iplayer.uhd_programmes() is items  # kept UHD_KEEP
+
+
+def test_a_uhd_series_opens_its_episodes_and_a_film_plays():
+    series = iplayer.uhd_programme(programme('m002zl60', 'Blue Planet III', 6))
+    card = iplayer.uhd_card(series)
+    assert (card['card.sub'], card['left'], card['hero.meta']) == ('Ultra HD', '6 episodes', 'BBC iPlayer')
+    www = parse_qs(urlsplit(parse_qs(urlsplit(card['tv.play']).query)['path'][0]).query)
+    assert www['mode'] == ['121'] and www['url'] == ['m002zl60']
+    film = iplayer.uhd_card(iplayer.uhd_programme(programme('m002m3tl', 'Mr Burton', 1, hdr=True)))
+    assert (film['card.sub'], film['left']) == ('Ultra HD  ·  HDR', '58 mins')
+    www = parse_qs(urlsplit(parse_qs(urlsplit(film['tv.play']).query)['path'][0]).query)
+    assert www['mode'] == ['202'] and www['url'] == ['https://www.bbc.co.uk/iplayer/episode/m002m3tle']
