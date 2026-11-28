@@ -7,8 +7,8 @@ on and its pictures, as the playlist's guide pictures do) and hands playback to
 iPlayer WWW, which fetches the stream: it never asks the BBC for a stream itself.
 
 - Highlights: Match of the Day's highlights of each Premier League match
-  ("Newcastle United v Arsenal Highlights"), on iPlayer for about a week; the
-  user's teams' (the My teams setting) and every match's, newest first.
+  ("Newcastle United v Arsenal Highlights"), on iPlayer for about a week,
+  the user's teams' (the My teams setting) first; and the full programmes.
 - Continue watching: the BBC account's list, as iPlayer WWW reads it signed in.
 - Watch on iPlayer: a BBC programme the guide has without catch-up, found on
   iPlayer by its channel and start time.
@@ -89,18 +89,20 @@ def released(value):
         return None
 
 
-def highlights():
-    """Match of the Day's match highlights on iPlayer, newest first:
+def episodes():
+    """Match of the Day on iPlayer, newest first: each match's highlights
+    ('match' its name) and the full programmes ('match' ''):
     [{'match', 'pid', 'picture', 'plot', 'day', 'length', 'until'}]."""
     found = []
     elements = (get('programmes/%s/episodes' % MATCH_OF_THE_DAY, per_page=40, rights='web')
                 .get('programme_episodes') or {}).get('elements') or []
     for episode in elements:
-        match = HIGHLIGHTS.match(episode.get('subtitle') or '')
-        if not match or not episode.get('id'):
+        if not episode.get('id'):
             continue
+        match = HIGHLIGHTS.match(episode.get('subtitle') or '')
         version = (episode.get('versions') or [{}])[0]
-        found.append({'match': match.group('match'), 'pid': episode['id'], 'picture': picture(episode.get('images')),
+        found.append({'match': match.group('match') if match else '', 'pid': episode['id'],
+                      'picture': picture(episode.get('images')),
                       'plot': (episode.get('synopses') or {}).get('small') or '',
                       'day': released(episode.get('release_date')),
                       'length': ((version.get('duration') or {}).get('text') or ''),
@@ -108,11 +110,24 @@ def highlights():
     return found
 
 
-def highlight_card(item, today=None):
+def highlights():
+    """Each match's highlights, newest first."""
+    return [i for i in episodes() if i['match']]
+
+
+def programmes():
+    """The full Match of the Day programmes, newest first."""
+    return [i for i in episodes() if not i['match']]
+
+
+def day_name(day, today=None):
     today = today or datetime.date.today()
-    day = item['day']
-    when = '' if day is None else 'Today' if day == today else 'Yesterday' if day == today - datetime.timedelta(1) \
+    return '' if day is None else 'Today' if day == today else 'Yesterday' if day == today - datetime.timedelta(1) \
         else day.strftime('%a %-d %b')
+
+
+def highlight_card(item, today=None):
+    when = day_name(item['day'], today)
     sub = '  ·  '.join(part for part in ('Match of the Day', when) if part)
     path = episode_path(item['pid'], 'Match of the Day - %s Highlights' % item['match'], item['picture'], item['plot'])
     return {'type': 'tv', 'label': item['match'], 'card.title': item['match'], 'card.sub': sub, 'card.wide_sub': sub,
@@ -123,9 +138,26 @@ def highlight_card(item, today=None):
             'tv.play': play_command(path)}
 
 
-def team_highlights(items, teams, mentions):
-    """The teams' matches among items (mentions: tvrows.mentions)."""
-    return [i for i in items if any(mentions(i['match'], team, teams) for team in teams)]
+def programme_card(item, today=None):
+    """A full Match of the Day: titled by its day ("Saturday 22 November")."""
+    when = day_name(item['day'], today)
+    title = 'Match of the Day'
+    path = episode_path(item['pid'], '%s - %s' % (title, item['day'].strftime('%d/%m/%Y') if item['day'] else ''),
+                        item['picture'], item['plot'])
+    sub = item['day'].strftime('%A %-d %B') if item['day'] else ''
+    return {'type': 'tv', 'label': title, 'card.title': title, 'card.sub': sub, 'card.wide_sub': sub,
+            'hero.title': title, 'hero.meta': 'BBC iPlayer',
+            'hero.facts': '  ·  '.join(part for part in (sub, item['length']) if part),
+            'plot': item['plot'], 'percent': '', 'left': item['length'] or when,
+            'art.landscape': item['picture'], 'art.fanart': item['picture'], 'tv.logo': '',
+            'tv.play': play_command(path)}
+
+
+def team_first(items, teams, mentions):
+    """items with the teams' matches first (mentions: tvrows.mentions), each
+    part newest first."""
+    ours = [i for i in items if any(mentions(i['match'], team, teams) for team in teams)]
+    return ours + [i for i in items if i not in ours]
 
 
 TAG = re.compile(r'\s*-\s*\[I\](.*?)\[/I\]\s*$')
@@ -159,18 +191,20 @@ def continue_card(item):
 
 
 def rows(teams, mentions):
-    """{'iplayer_team', 'iplayer_league', 'iplayer_continue'}: the TV page's
-    iPlayer rows' cards; all empty without iPlayer WWW."""
+    """{'iplayer_league', 'iplayer_motd', 'iplayer_continue'}: the TV page's
+    iPlayer rows' cards (every match's highlights, the teams' first; the full
+    programmes; Continue watching); all empty without iPlayer WWW."""
     if not installed():
         return {}
-    items = highlights()
+    items = episodes()
     try:
         watching = continue_watching()
     except Exception as error:  # the row stays empty
         kodi.log_warning('iPlayer: continue watching: %s' % error)
         watching = []
-    return {'iplayer_team': [highlight_card(i) for i in team_highlights(items, teams, mentions)],
-            'iplayer_league': [highlight_card(i) for i in items],
+    matches = [i for i in items if i['match']]
+    return {'iplayer_league': [highlight_card(i) for i in team_first(matches, teams, mentions)],
+            'iplayer_motd': [programme_card(i) for i in items if not i['match']],
             'iplayer_continue': [continue_card(i) for i in watching]}
 
 

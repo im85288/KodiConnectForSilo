@@ -1437,8 +1437,6 @@ class Service(object):
             titles = cards.pop(tvrows.TITLES, {})
             try:
                 cards.update(iplayer.rows(teams, tvrows.mentions))
-                if teams:
-                    titles['iplayer_team'] = '%s highlights' % teams[0]
             except Exception as error:  # the iPlayer rows stay empty
                 kodi.log_warning('TV page: iPlayer rows: %s' % error)
             tvrows.fill_reminders(cards)

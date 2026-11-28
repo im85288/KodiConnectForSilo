@@ -9,7 +9,9 @@ MOTD = {'programme_episodes': {'elements': [
      'images': {'standard': 'https://ichef.bbci.co.uk/images/ic/{recipe}/p0aaa.jpg'},
      'synopses': {'small': 'Cut straight to the action.'},
      'versions': [{'duration': {'text': '8 mins'}, 'availability': {'end': '2026-12-04T20:00:00Z'}}]},
-    {'id': 'm0035day', 'subtitle': '22/11/2026', 'release_date': '22 Nov 2026'},
+    {'id': 'm0035day', 'subtitle': '22/11/2026', 'release_date': '22 Nov 2026',
+     'images': {'standard': 'https://ichef.bbci.co.uk/images/ic/{recipe}/p0day.jpg'},
+     'versions': [{'duration': {'text': '1 hr 20 mins'}}]},
     {'id': 'm00359vw', 'subtitle': 'Newcastle United v Arsenal Highlights', 'release_date': '21 Nov 2026',
      'images': {'standard': 'https://ichef.bbci.co.uk/images/ic/{recipe}/p0pp8qyf.jpg'},
      'versions': [{'duration': {'text': '8 mins'}}]},
@@ -25,11 +27,24 @@ def test_match_of_the_day_highlights_newest_first(monkeypatch):
     assert items[0]['day'] == datetime.date(2026, 11, 27) and items[0]['length'] == '8 mins'
 
 
-def test_the_teams_highlights_not_another_teams(monkeypatch):
+def test_the_teams_matches_lead_the_highlights_not_another_teams(monkeypatch):
     monkeypatch.setattr(iplayer, 'get', lambda path, **query: MOTD)
     teams = ['Newcastle United', 'England']
-    mine = iplayer.team_highlights(iplayer.highlights(), teams, tvrows.mentions)
-    assert [i['match'] for i in mine] == ['Newcastle United v Arsenal']
+    ordered = iplayer.team_first(iplayer.highlights(), teams, tvrows.mentions)
+    assert [i['match'] for i in ordered] == ['Newcastle United v Arsenal', 'Nottingham Forest v Chelsea',
+                                             'Newcastle Jets v Sydney FC']
+
+
+def test_the_full_programmes_have_their_own_row(monkeypatch):
+    monkeypatch.setattr(iplayer, 'get', lambda path, **query: MOTD)
+    monkeypatch.setattr(iplayer, 'installed', lambda: True)
+    monkeypatch.setattr(iplayer, 'continue_watching', lambda: [])
+    rows = iplayer.rows(['Newcastle United'], tvrows.mentions)
+    assert [c['card.title'] for c in rows['iplayer_league']][:2] == ['Newcastle United v Arsenal',
+                                                                    'Nottingham Forest v Chelsea']
+    assert [(c['card.title'], c['card.sub'], c['left']) for c in rows['iplayer_motd']] == [
+        ('Match of the Day', 'Sunday 22 November', '1 hr 20 mins')]
+    assert 'iplayer_team' not in rows
 
 
 def test_a_highlight_card_plays_through_iplayer_www(monkeypatch):
