@@ -18,13 +18,19 @@
       <back>ActivateWindow(1188)</back>
     </remote>
   </FullscreenVideo>
+  <!-- OK in the guide goes through Skyline (timer silo_guide_ok): a finished BBC
+       programme with no catch-up plays from BBC iPlayer, anything else gets
+       Kodi's own OK (Action(Select)); Kodi's guide ignores the skin's onclick. -->
   <tvguide>
     <keyboard>
       <backspace>ActivateWindow(1189)</backspace>
       <browser_back>ActivateWindow(1189)</browser_back>
+      <return>SetProperty(silo.guide.ok,1,home)</return>
+      <enter>SetProperty(silo.guide.ok,1,home)</enter>
     </keyboard>
     <remote>
       <back>ActivateWindow(1189)</back>
+      <select>SetProperty(silo.guide.ok,1,home)</select>
     </remote>
   </tvguide>
 </keymap>
