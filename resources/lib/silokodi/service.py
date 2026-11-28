@@ -86,6 +86,7 @@ PUBLISHED_PAGES = {'home': 20, 'requests': 12}
 # load from their paths as Movies' rows do. Skyline's HOME_PUBLISHED_ROWS.
 PUBLISHED_ROWS = {'home': 4, 'requests': 12}
 TV_REFRESH = 300  # seconds between the TV page's rows (Skyline): what's on, and live matches
+TV_AFTER_STOP = 10  # seconds after playback stops: the TV page's rows again
 SWITCHED_FOR = 20  # seconds Skyline may wait for Kodi's banner after a Live TV start (onPlayBackStarted)
 GUIDE_LOGO_EVERY = 0.1  # seconds between looks at the guide's focused channel (watch_guide_logo)
 TV_WATCHED_WAIT = 5  # seconds after a channel is watched before On now is rebuilt
@@ -215,6 +216,9 @@ class Player(xbmc.Player):
         # When playback last stopped: an IPTV provider allowing one stream
         # refuses the next for some seconds (Skyline's TV preview waits).
         kodi.set_property('stopped_at', str(int(time.time())))
+        # The TV page's rows soon after (Continue watching on iPlayer takes
+        # what was just watched; the BBC has it a few seconds later).
+        self.service.tv_rows_due = time.time() + TV_AFTER_STOP  # the service's loop asks for them then
         for kind in upnext.MARKER_KINDS:
             kodi.clear_property('markers.' + kind)
         for field in PLAYING_FIELDS + EPISODE_FIELDS:

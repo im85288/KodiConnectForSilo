@@ -16,7 +16,7 @@ iPlayer WWW, which fetches the stream: it never asks the BBC for a stream itself
 import datetime
 import re
 import time
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from . import kodi
 
@@ -160,6 +160,34 @@ def team_first(items, teams, mentions):
     return ours + [i for i in items if i not in ours]
 
 
+def popular():
+    """iPlayer's Most Popular, as its home page has it, most watched first:
+    [{'title', 'subtitle', 'pid', 'picture', 'plot', 'length'}]."""
+    found = []
+    elements = (get('groups/popular/episodes', per_page=20, rights='web').get('group_episodes') or {}) \
+        .get('elements') or []
+    for episode in elements:
+        if not episode.get('id') or not episode.get('title'):
+            continue
+        version = (episode.get('versions') or [{}])[0]
+        found.append({'title': episode['title'], 'subtitle': episode.get('subtitle') or '', 'pid': episode['id'],
+                      'picture': picture(episode.get('images')),
+                      'plot': (episode.get('synopses') or {}).get('small') or '',
+                      'length': ((version.get('duration') or {}).get('text') or '')})
+    return found
+
+
+def popular_card(item):
+    sub = item['subtitle'] or 'BBC iPlayer'
+    title = ' - '.join(part for part in (item['title'], item['subtitle']) if part)
+    return {'type': 'tv', 'label': item['title'], 'card.title': item['title'], 'card.sub': sub, 'card.wide_sub': sub,
+            'hero.title': item['title'], 'hero.meta': 'BBC iPlayer',
+            'hero.facts': '  ·  '.join(part for part in (item['subtitle'], item['length']) if part),
+            'plot': item['plot'], 'percent': '', 'left': item['length'],
+            'art.landscape': item['picture'], 'art.fanart': item['picture'], 'tv.logo': '',
+            'tv.play': play_command(episode_path(item['pid'], title, item['picture'], item['plot']))}
+
+
 TAG = re.compile(r'\s*-\s*\[I\](.*?)\[/I\]\s*$')
 
 
@@ -175,10 +203,32 @@ def continue_watching():
         label = entry.get('label') or ''
         found = TAG.search(label)
         art = entry.get('art') or {}
+        path = entry.get('file') or ''
         items.append({'title': TAG.sub('', label).strip(), 'left': found.group(1).strip() if found else '',
-                      'path': entry.get('file') or '', 'plot': entry.get('plot') or '',
+                      'path': path, 'plot': entry.get('plot') or '', 'programme': programme_of(path),
                       'picture': art.get('fanart') or art.get('thumb') or entry.get('thumbnail') or ''})
     return [i for i in items if i['title'] and i['path']]
+
+
+EPISODE_PID = re.compile(r'/iplayer/episode/([a-z0-9]+)')
+
+
+def programme_of(path):
+    """The iPlayer programme (its series, or the film itself) an iPlayer WWW
+    address plays, as Continue Watching's Remove takes it: ibl's tleo_id for
+    the episode; '' when unknown."""
+    found = EPISODE_PID.search(''.join(parse_qs(urlsplit(path).query).get('url') or []))
+    if not found:
+        return ''
+    episode = ((get('episodes/%s' % found.group(1), rights='web').get('episodes') or [{}])[0]) or {}
+    return episode.get('tleo_id') or ''
+
+
+def remove_watching(programme):
+    """Take a programme off the BBC account's Continue Watching, as iPlayer
+    WWW's own Remove does (signed in as the user)."""
+    import xbmc
+    xbmc.executebuiltin('RunPlugin(plugin://%s/?mode=301&episode_id=%s&url=url)' % (ADDON, programme))
 
 
 def continue_card(item):
@@ -187,13 +237,14 @@ def continue_card(item):
             'card.wide_sub': 'BBC iPlayer', 'hero.title': item['title'], 'hero.meta': 'BBC iPlayer',
             'hero.facts': left, 'plot': item['plot'], 'percent': '', 'left': left,
             'art.landscape': item['picture'], 'art.fanart': item['picture'], 'tv.logo': '',
-            'tv.play': play_command(item['path'])}
+            'tv.play': play_command(item['path']), 'tv.iplayer': item.get('programme') or ''}
 
 
 def rows(teams, mentions):
-    """{'iplayer_league', 'iplayer_motd', 'iplayer_continue'}: the TV page's
-    iPlayer rows' cards (every match's highlights, the teams' first; the full
-    programmes; Continue watching); all empty without iPlayer WWW."""
+    """{'iplayer_league', 'iplayer_motd', 'iplayer_continue', 'iplayer_popular'}:
+    the TV page's iPlayer rows' cards (every match's highlights, the teams'
+    first; the full programmes; Continue watching; Most popular); all empty
+    without iPlayer WWW."""
     if not installed():
         return {}
     items = episodes()
@@ -205,7 +256,8 @@ def rows(teams, mentions):
     matches = [i for i in items if i['match']]
     return {'iplayer_league': [highlight_card(i) for i in team_first(matches, teams, mentions)],
             'iplayer_motd': [programme_card(i) for i in items if not i['match']],
-            'iplayer_continue': [continue_card(i) for i in watching]}
+            'iplayer_continue': [continue_card(i) for i in watching],
+            'iplayer_popular': [popular_card(i) for i in popular()]}
 
 
 # ----- a BBC programme from the guide -----

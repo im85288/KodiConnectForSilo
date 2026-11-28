@@ -25,6 +25,14 @@ def home_menu():
             forget_channel(recent)
             kodi.set_property('tv.refresh', '1')  # the service rebuilds the TV page's rows
         return
+    programme = xbmc.getInfoLabel('ListItem.Property(home.tv.iplayer)')
+    if programme:  # the TV page's Continue watching on iPlayer: Remove, as iPlayer's (iplayer.py)
+        if xbmcgui.Dialog().contextmenu([kodi.string(30263)]) == 0:
+            from . import iplayer
+            iplayer.remove_watching(programme)
+            xbmc.sleep(3000)  # iPlayer WWW tells the BBC, then the service rebuilds the TV page's rows
+            kodi.set_property('tv.refresh', '1')
+        return
     kind = xbmc.getInfoLabel('ListItem.Property(home.type)')
     dbid = xbmc.getInfoLabel('ListItem.Property(home.dbid)')
     if kind not in ('movie', 'tvshow', 'episode') or not dbid.isdigit():

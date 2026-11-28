@@ -35,7 +35,7 @@ ROWS = ((RECENT_ROW, 'Recent channels'),) + tuple((key, '') for key in GROUP_ROW
      # BBC iPlayer (iplayer.py, played by iPlayer WWW): every match's highlights
      # (the My teams' first), the full Match of the Day, and the account's Continue watching.
      ('iplayer_league', 'Premier League highlights'), ('iplayer_motd', 'Match of the Day'),
-     ('iplayer_continue', 'Continue watching on iPlayer'))
+     ('iplayer_continue', 'Continue watching on iPlayer'), ('iplayer_popular', 'Most popular on iPlayer'))
 # Coming up live, as Sky Stream's "Live & upcoming": live events starting
 # within UPCOMING_AHEAD on any channel, soonest first, one card an event (its
 # channels together); OK sets or removes its reminder.

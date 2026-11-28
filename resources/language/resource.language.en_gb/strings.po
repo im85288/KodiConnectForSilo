@@ -637,3 +637,7 @@ msgstr ""
 msgctxt "#30262"
 msgid "A notice when an episode becomes your Next Up, or a request or watchlist title arrives in the library."
 msgstr ""
+
+msgctxt "#30263"
+msgid "Remove from Continue watching"
+msgstr ""

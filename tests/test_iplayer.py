@@ -104,3 +104,31 @@ def test_the_banner_offers_iplayer_for_a_bbc_programme_without_catch_up():
 def test_no_rows_without_iplayer_www(monkeypatch):
     monkeypatch.setattr(iplayer, 'installed', lambda: False)
     assert iplayer.rows(['Newcastle United'], tvrows.mentions) == {}
+
+
+def test_a_continue_watching_card_knows_its_programme_for_remove(monkeypatch):
+    asked = []
+
+    def get(path, **query):
+        asked.append(path)
+        return {'episodes': [{'id': 'm0035mc', 'tleo_id': 'b006wnfw'}]}
+    monkeypatch.setattr(iplayer, 'get', get)
+    path = iplayer.episode_path('m0035mc', 'MasterChef')
+    assert iplayer.programme_of(path) == 'b006wnfw' and asked == ['episodes/m0035mc']
+    assert iplayer.programme_of('plugin://plugin.video.iplayerwww/?mode=202&url=x') == ''
+    card = iplayer.continue_card({'title': 'MasterChef', 'left': '', 'path': path, 'plot': '', 'picture': '',
+                                  'programme': 'b006wnfw'})
+    assert card['tv.iplayer'] == 'b006wnfw'
+
+
+def test_most_popular_on_iplayer(monkeypatch):
+    answer = {'group_episodes': {'elements': [
+        {'id': 'm0035sh', 'title': 'Shetland', 'subtitle': 'Series 11: Episode 1',
+         'images': {'standard': 'https://ichef/{recipe}/s.jpg'}, 'versions': [{'duration': {'text': '59 mins'}}]},
+        {'id': 'm0035ee', 'title': 'EastEnders', 'subtitle': '26/11/2026'},
+        {'title': 'No id'}]}}
+    monkeypatch.setattr(iplayer, 'get', lambda path, **query: answer)
+    cards = [iplayer.popular_card(i) for i in iplayer.popular()]
+    assert [(c['card.title'], c['card.sub'], c['left']) for c in cards] == [
+        ('Shetland', 'Series 11: Episode 1', '59 mins'), ('EastEnders', '26/11/2026', '')]
+    assert 'm0035sh' in cards[0]['tv.play']

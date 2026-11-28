@@ -57,7 +57,8 @@ FIELDS = ('type', 'dbid', 'label', 'card.title', 'card.sub', 'card.wide_sub', 'h
           'request.library', 'request.state', 'request.more', 'request.logo', 'request.from', 'request.to',
           # A TV page card's action, channel logo, recent channel (its context menu's
           # Remove) and LIVE / UPCOMING tag (tvrows.py).
-          'tv.play', 'tv.logo', 'tv.recent', 'tv.tag')
+          # tv.iplayer: an iPlayer Continue watching card's programme (its menu's Remove).
+          'tv.play', 'tv.logo', 'tv.recent', 'tv.tag', 'tv.iplayer')
 
 
 def card(kind, details, show=None, tint='', landscape=''):
